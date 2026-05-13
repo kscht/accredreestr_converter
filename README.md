@@ -4,6 +4,34 @@
 
 **Контекст для ИИ-ассистента:** в корне лежит [`AGENTS.md`](AGENTS.md) — краткие правила, пути и CLI; удобно вставлять в начало промпта в новой сессии.
 
+## Быстрый старт
+
+От нуля до JSONL (Linux / macOS; в **Windows** вместо `source` выполните `.venv\Scripts\activate`):
+
+```bash
+git clone git@github.com:kscht/accredreestr_converter.git
+cd accredreestr_converter
+
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# 1) Скрапер: записать URL последней выгрузки (data-YYYYMMDD-…) в download_urls.txt
+python scrape_opendata.py -o download_urls.txt
+
+# 2) Скачать XML в data/ по списку из файла
+python download.py -o data/
+
+# 3) Конвертация → out/<имя-xml>.jsonl (файл большой: десятки минут и сотни MB)
+mkdir -p out
+python convert.py data/data-*-structure-*.xml \
+  --progress-every 50000 \
+  --report out/convert_report.json \
+  --log-file out/convert.log
+```
+
+Короче, если не нужен отдельный шаг со **`download_urls.txt`**: шаги 1–2 можно заменить одной командой **`python download.py --discover -o data/`** (внутри вызывается тот же поиск URL, плюс сразу скачивание).
+
 ## Структура репозитория
 
 | Путь | Назначение |
@@ -42,6 +70,8 @@ https://isga.obrnadzor.gov.ru/accredreestr/opendata/
 В JSON каждая строка содержит **`_source_file`** — имя исходного XML (без пути).
 
 ## Установка
+
+Полный сценарий с активацией venv и pip — в разделе **[Быстрый старт](#быстрый-старт)** выше.
 
 ```bash
 python3 -m venv .venv
