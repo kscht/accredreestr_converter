@@ -147,6 +147,11 @@ def build_schema_dict() -> dict[str, Any]:
     }
     props["Decisions"] = {
         "type": "array",
+        "description": (
+            "Решения (распорядительные документы), как в XML. Элемент с Id: null допустим; "
+            "реляционный импорт по specs/sql/mapping.json не создаёт для него строку в "
+            "таблице decisions, сертификат и остальные сущности из строки JSONL импортируются."
+        ),
         "items": {"$ref": "#/$defs/Decision"},
     }
 
@@ -161,6 +166,15 @@ def build_schema_dict() -> dict[str, Any]:
         "properties": _object_props(AEO_JSON_KEYS),
     }
 
+    decision_props = _object_props(DECISION_JSON_KEYS)
+    decision_id_schema = dict(decision_props["Id"])
+    decision_id_schema["description"] = (
+        "Идентификатор распорядительного документа в выгрузке. null, если в XML пустой тег — "
+        "в JSONL объект решения может содержать другие поля; реляционный импорт не добавляет "
+        "строку в таблицу decisions без непустого Id, сертификат не отбрасывается."
+    )
+    decision_props["Id"] = decision_id_schema
+
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "$id": "https://github.com/kscht/accredreestr_converter/specs/json-schema/certificate-line.schema.json",
@@ -168,7 +182,9 @@ def build_schema_dict() -> dict[str, Any]:
         "description": (
             "Один объект JSON из выхода convert.py: поля сертификата, "
             "массивы Supplements/Decisions, опциональный ActualEducationOrganization. "
-            "Неизвестные теги из XML могут появиться как дополнительные ключи."
+            "Неизвестные теги из XML могут появиться как дополнительные ключи. "
+            "Пустой Id у элемента Decisions означает отсутствие идентификатора документа в выгрузке, "
+            "не «отсутствие организации»; см. docs/sql_convert.md."
         ),
         "type": "object",
         "required": ["_source_file"],
@@ -183,7 +199,7 @@ def build_schema_dict() -> dict[str, Any]:
             "Decision": {
                 "type": "object",
                 "additionalProperties": True,
-                "properties": _object_props(DECISION_JSON_KEYS),
+                "properties": decision_props,
             },
             "EducationalProgram": {
                 "type": "object",

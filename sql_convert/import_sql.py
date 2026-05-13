@@ -140,6 +140,7 @@ def _row_program(
     prog: dict[str, Any],
     cols: list[dict[str, Any]],
     dialect: Dialect,
+    program_slot: int,
 ) -> tuple[Any, ...]:
     vals: list[Any] = []
     for c in cols:
@@ -150,6 +151,8 @@ def _row_program(
             vals.append(_adapt_scalar(obj.get("_source_file"), "TEXT", dialect))
         elif n == "certificate_id":
             vals.append(_adapt_scalar(obj.get("Id"), "TEXT", dialect))
+        elif n == "program_slot":
+            vals.append(int(program_slot))
         elif n == "supplement_id" and fj == "Id":
             vals.append(_adapt_scalar(sup.get("Id"), "TEXT", dialect))
         elif n == "program_id" and fj == "Id":
@@ -197,7 +200,13 @@ def iter_certificate_inserts(
     mapping: dict[str, Any],
     obj: dict[str, Any],
 ) -> Iterator[tuple[str, list[str], tuple[Any, ...]]]:
-    """Проекция одной строки JSONL в набор строк INSERT (таблица, колонки, значения)."""
+    """Проекция одной строки JSONL в набор строк INSERT (таблица, колонки, значения).
+
+    Элементы ``Decisions[]`` без непустого JSON ``Id`` не порождают строку в таблице
+    ``decisions`` (в выгрузке нет идентификатора документа для отдельной реляционной
+    записи). Свидетельство и остальные дочерние сущности по строке JSONL импортируются
+    как обычно; это не отказ от организации.
+    """
     cert_cols = _table_columns(mapping, "certificates")
     cnames = [c["name"] for c in cert_cols]
     yield ("certificates", cnames, _row_certificate(obj, cert_cols, dialect))
@@ -211,17 +220,26 @@ def iter_certificate_inserts(
     dec_cols = _table_columns(mapping, "decisions")
     dnames = [c["name"] for c in dec_cols]
     for dec in obj.get("Decisions") or []:
-        if isinstance(dec, dict):
-            yield ("decisions", dnames, _row_decision(obj, dec, dec_cols, dialect))
+        if not isinstance(dec, dict):
+            continue
+        raw = dec.get("Id")
+        if raw is None or (isinstance(raw, str) and not str(raw).strip()):
+            # Нет идентификатора документа в выгрузке — строку в decisions не создаём
+            continue
+        yield ("decisions", dnames, _row_decision(obj, dec, dec_cols, dialect))
 
     prog_cols = _table_columns(mapping, "educational_programs")
     pnames = [c["name"] for c in prog_cols]
     for sup in obj.get("Supplements") or []:
         if not isinstance(sup, dict):
             continue
-        for prog in sup.get("EducationalPrograms") or []:
+        for program_slot, prog in enumerate(sup.get("EducationalPrograms") or []):
             if isinstance(prog, dict):
-                yield ("educational_programs", pnames, _row_program(obj, sup, prog, prog_cols, dialect))
+                yield (
+                    "educational_programs",
+                    pnames,
+                    _row_program(obj, sup, prog, prog_cols, dialect, program_slot),
+                )
 
     aeo_cols = _table_columns(mapping, "actual_education_organizations")
     anames = [c["name"] for c in aeo_cols]
@@ -302,7 +320,6 @@ def export_jsonl_to_sql(
     creates = build_create_statements(mapping, dialect)
 
     sql_out_path.parent.mkdir(parents=True, exist_ok=True)
-    n = 0
     with sql_out_path.open("w", encoding="utf-8", newline="\n") as fh:
         fh.write("-- Generated from JSONL by sql_convert.import_sql\n")
         if dialect == "sqlite":
@@ -315,23 +332,30 @@ def export_jsonl_to_sql(
             for s in creates:
                 fh.write(s + "\n")
         fh.write("BEGIN;\n")
+        processed = 0
+        ok = 0
         with jsonl_path.open(encoding="utf-8") as jf:
             for line in jf:
                 line = line.strip()
                 if not line:
                     continue
+                processed += 1
                 try:
                     obj = json.loads(line)
                     for table, cnames, row in iter_certificate_inserts(dialect, mapping, obj):
                         fh.write(insert_statement_literals(dialect, table, cnames, row) + "\n")
+                    ok += 1
                 except Exception as exc:  # noqa: BLE001
                     logging.warning("Пропуск строки JSONL: %s", exc)
-                    continue
-                n += 1
-                if limit is not None and n >= limit:
+                if limit is not None and processed >= limit:
                     break
         fh.write("COMMIT;\n")
-    logging.info("Записано строк JSONL в SQL: %s → %s", n, sql_out_path)
+    logging.info(
+        "Записано в SQL %s объектов из %s обработанных строк JSONL → %s",
+        ok,
+        processed,
+        sql_out_path,
+    )
     return 0
 
 
@@ -405,24 +429,35 @@ def import_jsonl(
             else:
                 conn.commit()
 
-        n = 0
+        processed = 0
+        ok = 0
         with jsonl_path.open(encoding="utf-8") as fh:
             for line in fh:
                 line = line.strip()
                 if not line:
                     continue
-                obj = json.loads(line)
+                processed += 1
+                try:
+                    obj = json.loads(line)
+                except json.JSONDecodeError as exc:
+                    logging.warning("Пропуск строки JSONL (не JSON): %s", exc)
+                    if limit is not None and processed >= limit:
+                        break
+                    continue
                 try:
                     import_one_certificate(execute, dialect, mapping, obj)
                     conn.commit()
+                    ok += 1
                 except Exception as exc:  # noqa: BLE001
                     conn.rollback()
                     logging.warning("Пропуск строки JSONL: %s", exc)
-                    continue
-                n += 1
-                if limit is not None and n >= limit:
+                if limit is not None and processed >= limit:
                     break
-        logging.info("Успешно импортировано строк JSONL: %s", n)
+        logging.info(
+            "Обработано строк JSONL: %s (успешно импортировано объектов: %s)",
+            processed,
+            ok,
+        )
     finally:
         conn.close()
     return 0
@@ -480,7 +515,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         type=int,
         default=None,
         metavar="N",
-        help="Импортировать только первые N строк JSONL (для тестов)",
+        help="Обработать не более N непустых строк JSONL (включая пропущенные из-за ошибок)",
     )
     return p.parse_args(argv)
 

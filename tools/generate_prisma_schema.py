@@ -29,6 +29,8 @@ def _sql_type_to_prisma(sql_type: str, nullable: bool | None, *, in_primary_key:
         return f"Boolean{opt}"
     if sql_type == "DATE":
         return f"String{opt} @db.Text"
+    if sql_type == "INTEGER":
+        return f"Int{opt}"
     return f"String{opt} @db.Text"
 
 

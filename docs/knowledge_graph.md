@@ -6,6 +6,7 @@
 
 - Одна строка JSONL = один объект **свидетельства** (логически «корень» — поля верхнего уровня, как в XML `Certificate`).
 - **`_source_file`** — имя XML-выгрузки; включайте в URI или в свойства узла для **провенанса** и различения снимков реестра.
+- Реляционный импорт и Prisma/DuckDB используют [`specs/sql/mapping.json`](../specs/sql/mapping.json): там зафиксированы PK (в т.ч. **`program_slot`** для строк программы, см. [`sql_convert.md`](sql_convert.md)).
 
 ## Машиночитаемая карта
 
@@ -33,11 +34,13 @@
 1. **Поле `Id` повторяется** в разных вложенных объектах (свидетельство, приложение, решение, программа, ОО). Глобальный идентификатор узла **нельзя** строить только из `Id` — в `mapping.json` шаблоны это учитывают (цепочка родительских ключей + `_source_file`).
 2. **Дублирование организации**: на корне сертификата есть плоские `EduOrg*` и отдельно вложенный **`ActualEducationOrganization`** — в аналитике это может быть один реальный субъект или два представления; правило слияния задаётся вами (например, связь `ALIAS_ORG` при совпадении ИНН после очистки).
 3. **Грязные идентификаторы** в JSON остаются строками — для `same_as` по ИНН/ОГРН нужна **нормализация** на стороне импорта.
+4. **Узел `Decision` и пустой `Decisions[].Id`**: шаблон `urn:…:Decision:…:{Decision.Id}` требует непустого идентификатора документа. Если `Id` у элемента решения пустой, **узел Decision и ребро `hasDecision` для этой позиции строить нельзя** (нет устойчивого IRI), при этом **узел `Certificate` и организация** из той же строки JSONL остаются валидными. Импорт в SQL/DuckDB по репозиторию в таких случаях **не создаёт строку в таблице `decisions`**, но **не отклоняет** сертификат целиком.
+5. **`EducationalProgram`**: в шаблоне URI участвует **`program_slot`** (индекс в `EducationalPrograms[]` внутри данного приложения) вместе с `EducationalProgram.Id`, потому что идентификатор программы в реестре может повторяться для разных периодов аккредитации.
 
 ## Связь с подписями полей
 
 Русские подписи из паспорта набора — в **`specs/field_labels.json`** (пути вида `Certificate/…`). Их можно подвесить как `rdfs:label` / свойство `ui_label` на предикатах или свойствах графа.
 
-## Параллельно: SQL и Prisma
+## Параллельно: SQL, Prisma и DuckDB/Parquet
 
-Та же декомпозиция строки описана для реляционной загрузки: [`specs/sql/mapping.json`](../specs/sql/mapping.json), [`sql_convert.md`](sql_convert.md). Схема Prisma генерируется из того же SQL-mapping: [`specs/prisma/mapping.json`](../specs/prisma/mapping.json), [`prisma.md`](prisma.md). Для проверки формы JSON — [`specs/json-schema/certificate-line.schema.json`](../specs/json-schema/certificate-line.schema.json), [`json_schema.md`](json_schema.md).
+Та же декомпозиция строки описана для реляционной загрузки: [`specs/sql/mapping.json`](../specs/sql/mapping.json), [`sql_convert.md`](sql_convert.md). Схема Prisma генерируется из того же SQL-mapping: [`specs/prisma/mapping.json`](../specs/prisma/mapping.json), [`prisma.md`](prisma.md). Для DuckDB и Parquet — [`parquet_duckdb.md`](parquet_duckdb.md). Для проверки формы JSON — [`specs/json-schema/certificate-line.schema.json`](../specs/json-schema/certificate-line.schema.json), [`json_schema.md`](json_schema.md).

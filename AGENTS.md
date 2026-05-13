@@ -34,12 +34,15 @@
 | `specs/prisma/schema.prisma` | Схема Prisma (не править вручную) |
 | `specs/json-schema/certificate-line.schema.json` | JSON Schema (2020-12) для одной строки JSONL |
 | `tools/generate_json_schema.py` | Перегенерация JSON Schema |
+| `tools/sample_jsonl_lines.py` | Подвыборка N строк из большого JSONL (резервуар, один проход); пример: `out/sample_live_5000.jsonl` |
 | `docs/knowledge_graph.md` | Пояснения к KG |
 | `docs/sql_convert.md` | Пояснения к SQL-импорту |
+| `docs/parquet_duckdb.md` | JSONL → DuckDB и экспорт Parquet |
 | `docs/prisma.md` | Prisma: генерация, Datasource, ограничения |
 | `docs/json_schema.md` | JSON Schema: валидация, перегенерация |
 | `sql_convert/import_sql.py` | JSONL → SQLite / PostgreSQL / MySQL (`python -m sql_convert.import_sql`) |
-| `sql_convert/sql_ddl.py` | DDL из `specs/sql/mapping.json` |
+| `sql_convert/sql_ddl.py` | DDL из `specs/sql/mapping.json` (SQLite, PostgreSQL, MySQL, DuckDB) |
+| `parquet_convert/import_duckdb.py` | JSONL → DuckDB / Parquet (`python -m parquet_convert.import_duckdb`) |
 | `download.py` | Скачивание XML, `--discover`, `--save-urls` |
 | `scrape_opendata.py` | Только поиск URL |
 | `tests/test_convert.py` | Основные тесты |
@@ -51,6 +54,8 @@
 | `tests/test_schema_compat.py` | Константы ⊆ схема XML |
 | `tests/test_scrape_opendata.py` | Парсер HTML perechen |
 | `tests/test_import_sql.py` | Импорт JSONL в SQLite / PostgreSQL / MySQL (опц. интеграция по DSN) |
+| `tests/test_import_sql_live_sample.py` | Опционально: импорт `out/sample_live_5000.jsonl` при **`ACCRED_SQL_LIVE_SAMPLE=1`** |
+| `tests/test_import_duckdb.py` | Импорт JSONL в DuckDB и Parquet (нужен пакет `duckdb`) |
 
 ## CLI `convert.py`
 
@@ -62,6 +67,10 @@
 Опции: `--schema`, `--progress-every` (default 10000, `0` = тише), `--limit` (на каждый вход), **`--log-file`** (доп. лог; без него только stderr), `--report` (JSON-статистика), `--strict`.
 
 В каждой записи: **`_source_file`** — имя исходного XML.
+
+## Решения (`Decisions`) без `Id` в JSONL
+
+Пустой идентификатор документа в выгрузке → в JSON `Id: null` у элемента `Decisions[]`; **сертификат и организация в строке не теряются**. Импорт в SQL/DuckDB **не вставляет** такую позицию в таблицу `decisions` (нужен PK документа). См. `docs/sql_convert.md`, `docs/knowledge_graph.md`.
 
 ## Ошибки в полях (что в JSONL)
 
@@ -76,13 +85,14 @@
 
 ## Зависимости
 
-`requirements.txt`: `lxml`, `requests`, `pytest`, **`jsonschema`**, **`psycopg[binary]`** (PostgreSQL), **`pymysql`** (MySQL). В конвертере **нет** `xmltodict`, `pandas`, `pydantic`.
+`requirements.txt`: `lxml`, `requests`, `pytest`, **`jsonschema`**, **`psycopg[binary]`** (PostgreSQL), **`pymysql`** (MySQL), **`duckdb`**. В конвертере **нет** `xmltodict`, `pandas`, `pydantic`.
 
 ## Тесты
 
 ```bash
 pytest
 # опционально: RUN_SLOW=1 pytest -k streaming
+# опционально: ACCRED_SQL_LIVE_SAMPLE=1 pytest tests/test_import_sql_live_sample.py -q
 ```
 
 ## Каталоги и gitignore

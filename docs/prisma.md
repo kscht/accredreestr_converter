@@ -30,7 +30,9 @@ DATABASE_URL="postgresql://user:pass@127.0.0.1:5432/dbname" npx prisma validate 
 ## Ограничения
 
 - Типы **DATE** и «грязные» строки в SQL отражены как **`String @db.Text`**, как в консервативной политике `specs/sql/mapping.json`.
+- Колонка **`program_slot`** в `EducationalProgram` — **`Int`** (составной PK вместе с файлами выгрузки и приложением); **`program_id`** — **`String?`** (идентификатор программы в реестре, может повторяться между строками).
 - Две связи **`ActualEducationOrganization`** → сертификат и → приложение разведены именами релейшенов (`AeoViaCertificate`, `AeoViaSupplement`); частичная семантика FK на стороне SQL см. [`sql_convert.md`](sql_convert.md).
+- Модель **`Decision`** соответствует только элементам `Decisions[]` с **непустым** `Id` в JSONL: иначе в источнике нет ключа документа, строка в `decisions` не создаётся при импорте, **`Certificate` при этом не отбрасывается** (см. [`sql_convert.md`](sql_convert.md)).
 
 ## Связь с KG и JSON Schema
 

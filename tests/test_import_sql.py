@@ -146,6 +146,146 @@ def test_import_sqlite_multiple_supplements(ms_jsonl: Path, tmp_path: Path) -> N
     conn.close()
 
 
+def test_export_sql_limit_counts_non_empty_lines(ms_jsonl: Path, tmp_path: Path) -> None:
+    """--limit = число обработанных непустых строк; битая строка расходует лимит."""
+    one = ms_jsonl.read_text(encoding="utf-8").strip()
+    mix = tmp_path / "mix.jsonl"
+    mix.write_text(one + "\n{not-json\n" + one + "\n", encoding="utf-8")
+    sql_path = tmp_path / "lim.sql"
+    export_jsonl_to_sql(
+        mix,
+        sql_path,
+        dialect="sqlite",
+        mapping_path=None,
+        recreate=True,
+        limit=2,
+    )
+    text = sql_path.read_text(encoding="utf-8")
+    assert text.count('INSERT INTO "certificates"') == 1
+
+
+def test_import_sqlite_limit_counts_input_lines_including_failed(ms_jsonl: Path, tmp_path: Path) -> None:
+    """Вторая строка — дубликат PK; при limit=1 вторая не читается."""
+    line = ms_jsonl.read_text(encoding="utf-8").strip()
+    dup = tmp_path / "dup.jsonl"
+    dup.write_text(line + "\n" + line + "\n", encoding="utf-8")
+    db1 = tmp_path / "lim1.sqlite"
+    import_jsonl(
+        dup,
+        dialect="sqlite",
+        sqlite_path=db1,
+        postgres_conninfo=None,
+        mysql_dsn=None,
+        mapping_path=None,
+        recreate=True,
+        limit=1,
+    )
+    conn = sqlite3.connect(str(db1))
+    assert conn.execute("SELECT COUNT(*) FROM certificates").fetchone()[0] == 1
+    conn.close()
+
+    db2 = tmp_path / "lim2.sqlite"
+    import_jsonl(
+        dup,
+        dialect="sqlite",
+        sqlite_path=db2,
+        postgres_conninfo=None,
+        mysql_dsn=None,
+        mapping_path=None,
+        recreate=True,
+        limit=2,
+    )
+    conn = sqlite3.connect(str(db2))
+    assert conn.execute("SELECT COUNT(*) FROM certificates").fetchone()[0] == 1
+    conn.close()
+
+
+def test_import_duplicate_program_registry_ids_in_one_supplement(
+    ms_jsonl: Path, tmp_path: Path
+) -> None:
+    """Одинаковый Id программы в реестре у двух строк EducationalPrograms — обе строки в БД."""
+    import json
+
+    pid = "same-program-id-uuid-000000000000000000000000"
+    obj = json.loads(ms_jsonl.read_text(encoding="utf-8").strip())
+    sup = obj["Supplements"][0]
+    sup["EducationalPrograms"] = [
+        {
+            "Id": pid,
+            "TypeName": "A",
+            "ProgrammName": "Первая строка периода",
+        },
+        {
+            "Id": pid,
+            "TypeName": "B",
+            "ProgrammName": "Вторая строка периода",
+        },
+    ]
+    j = tmp_path / "dup_prog.jsonl"
+    j.write_text(json.dumps(obj, ensure_ascii=False) + "\n", encoding="utf-8")
+    db = tmp_path / "dup.sqlite"
+    import_jsonl(
+        j,
+        dialect="sqlite",
+        sqlite_path=db,
+        postgres_conninfo=None,
+        mysql_dsn=None,
+        mapping_path=None,
+        recreate=True,
+        limit=None,
+    )
+    conn = sqlite3.connect(str(db))
+    assert conn.execute("SELECT COUNT(*) FROM certificates").fetchone()[0] == 1
+    assert conn.execute("SELECT COUNT(*) FROM educational_programs").fetchone()[0] == 2
+    slots = sorted(
+        r[0]
+        for r in conn.execute(
+            "SELECT program_slot FROM educational_programs WHERE program_id = ?",
+            (pid,),
+        )
+    )
+    assert slots == [0, 1]
+    conn.close()
+
+
+def test_import_skips_decisions_without_document_id(ms_jsonl: Path, tmp_path: Path) -> None:
+    """Решения без непустого Id не попадают в decisions; остальной сертификат импортируется."""
+    import json
+
+    obj = json.loads(ms_jsonl.read_text(encoding="utf-8").strip())
+    obj["Decisions"] = [
+        {"Id": None, "DecisionTypeName": "без документа"},
+        {
+            "Id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+            "DecisionTypeName": "есть Id",
+            "OrderDocumentNumber": None,
+            "OrderDocumentKind": None,
+            "DecisionDate": None,
+        },
+    ]
+    j = tmp_path / "with_dec.jsonl"
+    j.write_text(json.dumps(obj, ensure_ascii=False) + "\n", encoding="utf-8")
+    db = tmp_path / "t.sqlite"
+    import_jsonl(
+        j,
+        dialect="sqlite",
+        sqlite_path=db,
+        postgres_conninfo=None,
+        mysql_dsn=None,
+        mapping_path=None,
+        recreate=True,
+        limit=None,
+    )
+    conn = sqlite3.connect(str(db))
+    assert conn.execute("SELECT COUNT(*) FROM decisions").fetchone()[0] == 1
+    assert (
+        conn.execute("SELECT decision_id FROM decisions").fetchone()[0]
+        == "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    )
+    assert conn.execute("SELECT COUNT(*) FROM certificates").fetchone()[0] == 1
+    conn.close()
+
+
 def _have_psycopg() -> bool:
     try:
         import psycopg  # noqa: F401

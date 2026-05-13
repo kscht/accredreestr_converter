@@ -13,21 +13,35 @@
 
 Импортёр: одна строка JSONL → `INSERT`/`COPY` в `certificates` + дочерние строки по массивам и вложенному объекту.
 
-Тот же файл служит источником для **Prisma** (`python tools/generate_prisma_schema.py`, см. [`prisma.md`](prisma.md)).
+Тот же файл служит источником для **Prisma** (`python tools/generate_prisma_schema.py`, см. [`prisma.md`](prisma.md)) и для **DuckDB / Parquet** (`python -m parquet_convert.import_duckdb`, см. [`parquet_duckdb.md`](parquet_duckdb.md)).
 
 ## Важные детали JSON (как в `convert.py`)
 
 - Массив **`Supplements`** — это список **объектов полей приложения** (без лишней обёртки с ключом `Supplement` в JSON).
-- Аналогично **`Decisions`** и **`EducationalPrograms`** внутри приложения.
+- Массив **`Decisions`** — список объектов решений (как в XML). **Свидетельство и организация** по строке JSONL **не отбрасываются**: в `certificates` (и остальные дочерние таблицы по маппингу) попадают как обычно.
+- Строка в таблице **`decisions`** создаётся **только если** у элемента `Decisions[]` есть **непустой** **`Id`** — это идентификатор распорядительного документа в выгрузке и часть составного PK. Если в XML пустой `<Id/>` у решения, в JSON будет `Id: null`: в данных **нет стабильной ссылки на документ** (в т.ч. при «утерянном» документе в смысле реестра). Такой элемент **не вставляется** в `decisions` — это **не** утверждение, что организации нет; просто **отдельную сущность «документ»** в реляционной схеме без ключа хранить нельзя. Остальные поля того же объекта в JSONL по-прежнему доступны в исходной строке.
+- Массив **`EducationalPrograms`** внутри каждого приложения — список объектов полей программы (без лишней обёртки с ключом `EducationalProgram` в JSON). В таблице **`educational_programs`** первичный ключ включает **`program_slot`** — порядковый индекс элемента в этом массиве (0, 1, …): идентификатор программы в реестре (**`program_id`**, JSON `Id`) **может повторяться** для разных периодов/строк выгрузки, это не ошибка данных.
 - **`ActualEducationOrganization`**: либо один объект на корне сертификата, либо внутри элемента `Supplements[]` — в SQL это одна таблица с полем **`ae_scope`** (`certificate` | `supplement`) и **`supplement_id`** (NULL, если карточка относится к корню сертификата).
 
 ## Первичный ключ и дубликаты
 
-Составной ключ `(source_file, certificate_id)` однозначно привязывает запись к **конкретной выгрузке** и **Id в XML**. При повторной загрузке того же файла используйте **`ON CONFLICT DO UPDATE`** или сначала удалите строки с этим `source_file`.
+Составной ключ `(source_file, certificate_id)` для **`certificates`** привязывает запись к **конкретной выгрузке** и **Id свидетельства в XML**. Дочерние таблицы расширяют этот префикс своими полями; полный перечень PK задан в [`specs/sql/mapping.json`](../specs/sql/mapping.json):
+
+| Таблица | Первичный ключ (колонки) |
+|---------|--------------------------|
+| `certificates` | `source_file`, `certificate_id` |
+| `supplements` | `source_file`, `certificate_id`, `supplement_id` |
+| `decisions` | `source_file`, `certificate_id`, `decision_id` |
+| `educational_programs` | `source_file`, `certificate_id`, `supplement_id`, **`program_slot`** |
+| `actual_education_organizations` | `source_file`, `certificate_id`, `ae_scope`, `supplement_id`, `aeo_id` |
+
+**`program_slot`** в JSONL **нет**: при импорте задаётся как **индекс** (0, 1, …) элемента в массиве `EducationalPrograms[]` внутри данного элемента `Supplements[]`. Колонка **`program_id`** хранит реестровый `Id` программы и **может повторяться** в нескольких строках таблицы.
+
+При повторной загрузке того же файла используйте **`ON CONFLICT DO UPDATE`** или сначала удалите строки с этим `source_file`.
 
 ## Типы и «грязные» даты
 
-В `mapping.json` для дат указан `DATE`. Если в JSON после конвертера осталась **не-ISO** строка, при загрузке либо кладите в **TEXT**, либо добавьте колонки `*_raw`, либо нормализуйте в ETL до `DATE`.
+В `mapping.json` для дат указан `DATE`. Если в JSON после конвертера осталась **не-ISO** строка, при загрузке либо кладите в **TEXT**, либо добавьте колонки `*_raw`, либо нормализуйте в ETL до `DATE`. Тип **`INTEGER`** используется для **`program_slot`** в `educational_programs` (см. раздел выше).
 
 Булевы и числовые идентификаторы — см. раздел **«Обработка грязных данных»** в [`README.md`](../README.md).
 
@@ -58,6 +72,6 @@ python -m sql_convert.import_sql out/data.jsonl --sql-out out/dump.sql --sql-dia
 
 - **`--recreate`** — выполнить `DROP TABLE …` (для PostgreSQL с `CASCADE`) и `CREATE TABLE` по [`specs/sql/mapping.json`](../specs/sql/mapping.json), затем импорт. Без флага таблицы должны уже существовать с той же схемой.
 - **`--mapping`** — другой файл mapping (по умолчанию `specs/sql/mapping.json` в репозитории).
-- **`--limit N`** — обработать только первые N строк JSONL (отладка).
+- **`--limit N`** — не более **N непустых** строк JSONL (счётчик по входу; ошибки импорта тоже расходуют лимит).
 
 Для PostgreSQL нужен пакет **`psycopg[binary]`**, для MySQL — **`pymysql`** (см. `requirements.txt`). Опциональные интеграционные тесты: **`ACCRED_PG_TEST_DSN`**, **`ACCRED_MYSQL_TEST_DSN`**, затем `pytest` (см. `tests/test_import_sql.py`).

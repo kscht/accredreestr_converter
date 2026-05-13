@@ -1,13 +1,14 @@
 {
   "format_version": 1,
   "source_profile": "jsonl_one_object_per_line_root_equals_certificate_record",
-  "description_ru": "Описание узлов и рёбер для построения property graph или RDF из строк JSONL конвертера. Идентификаторы — шаблоны: подставляйте значения из той же строки JSON; при коллизиях добавляйте версию снимка.",
+  "description_ru": "Описание узлов и рёбер для построения property graph или RDF из строк JSONL конвертера. Идентификаторы — шаблоны: подставляйте значения из той же строки JSON; для EducationalProgram в шаблон входит program_slot (индекс в массиве программ приложения), его нет в JSON — вычисляйте при обходе Supplements[].EducationalPrograms[]. При коллизиях IRI добавляйте версию снимка.",
   "id_conventions": {
     "namespace": "urn:accred:v1:",
     "rules": [
       "Все глобальные URI строить из состава: namespace + kind + ':' + устойчивый локальный ключ.",
       "Локальный ключ сертификата: basename(_source_file) + ':' + строковое значение поля Id.",
-      "Дочерние сущности включают в ключ идентификатор родителя, чтобы Id внутри приложения не путался между сертификатами."
+      "Дочерние сущности включают в ключ идентификатор родителя, чтобы Id внутри приложения не путался между сертификатами.",
+      "Узел EducationalProgram: в локальный ключ входят supplement Id и program_slot (0, 1, … по порядку в EducationalPrograms[]) и Id программы в реестре — одинаковый реестровый Id у нескольких строк массива нормален (разные периоды аккредитации)."
     ]
   },
   "node_kinds": [
@@ -84,7 +85,7 @@
     },
     {
       "kind": "Decision",
-      "description_ru": "Распорядительный документ",
+      "description_ru": "Распорядительный документ. Узел в графе задаётся только при непустом Decisions[].Id; при пустом Id объект в JSONL может быть без устойчивого IRI — узел Certificate и данные об организации из строки остаются валидными.",
       "id_template": "urn:accred:v1:Decision:{_source_file_basename}:{certificate_Id}:{Decision.Id}",
       "id_fields": ["_source_file", "Id", "Decisions[].Id"],
       "json_container": "Decisions",
@@ -103,12 +104,13 @@
     },
     {
       "kind": "EducationalProgram",
-      "description_ru": "Образовательная программа внутри приложения",
-      "id_template": "urn:accred:v1:EducationalProgram:{_source_file_basename}:{certificate_Id}:{supplement_Id}:{EducationalProgram.Id}",
+      "description_ru": "Образовательная программа внутри приложения. В шаблоне program_slot — порядковый индекс элемента в EducationalPrograms[] данного Supplement (0, 1, …), т.к. Id программы в реестре может повторяться для разных периодов.",
+      "id_template": "urn:accred:v1:EducationalProgram:{_source_file_basename}:{certificate_Id}:{supplement_Id}:{program_slot}:{EducationalProgram.Id}",
       "id_fields": [
         "_source_file",
         "Id",
         "Supplements[].Id",
+        "program_slot",
         "EducationalPrograms[].Id"
       ],
       "json_path": "Supplements[].EducationalPrograms[]",
@@ -229,6 +231,8 @@
     "specs/sql/mapping.json",
     "specs/json-schema/certificate-line.schema.json",
     "specs/field_labels.json",
-    "specs/xml/data-20160908-structure-20160713.xml"
+    "specs/xml/data-20160908-structure-20160713.xml",
+    "docs/knowledge_graph.md",
+    "docs/sql_convert.md"
   ]
 }

@@ -70,7 +70,7 @@ model Supplement {
   @@map("supplements")
 }
 
-/// Элементы массива JSON Decisions.
+/// Распорядительные документы: по одной строке на элемент Decisions[] с непустым Id в JSONL. Элементы с пустым Id не импортируются (нет ключа документа); сертификат и организация из той же строки JSONL не отбрасываются.
 model Decision {
   source_file String @db.Text
   certificate_id String @db.Text
@@ -84,12 +84,13 @@ model Decision {
   @@map("decisions")
 }
 
-/// Программы внутри каждого элемента Supplements (массив EducationalPrograms).
+/// Программы внутри каждого элемента Supplements (массив EducationalPrograms). Идентификатор программы в реестре (program_id) может повторяться для разных периодов/строк выгрузки; уникальность строки задаёт program_slot — порядковый индекс элемента в массиве EducationalPrograms данного приложения (0, 1, …).
 model EducationalProgram {
   source_file String @db.Text
   certificate_id String @db.Text
   supplement_id String @db.Text
-  program_id String @db.Text
+  program_slot Int
+  program_id String? @db.Text
   type_name String? @db.Text
   edu_level_name String? @db.Text
   programm_name String? @db.Text
@@ -102,7 +103,7 @@ model EducationalProgram {
   is_canceled Boolean?
   is_suspended Boolean?
   supplement Supplement @relation(fields: [source_file, certificate_id, supplement_id], references: [source_file, certificate_id, supplement_id], onDelete: Cascade)
-  @@id([source_file, certificate_id, supplement_id, program_id])
+  @@id([source_file, certificate_id, supplement_id, program_slot])
   @@map("educational_programs")
 }
 

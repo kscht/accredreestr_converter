@@ -1,7 +1,7 @@
 {
   "format_version": 1,
   "source_profile": "jsonl_one_object_per_line_root_equals_certificate_record",
-  "description_ru": "Ориентир для Prisma ORM: реляционная проекция задаётся в specs/sql/mapping.json; файл specs/prisma/schema.prisma генерируется скриптом tools/generate_prisma_schema.py (не правьте schema.prisma вручную — перегенерируйте после изменения specs/sql/mapping.json).",
+  "description_ru": "Ориентир для Prisma ORM: реляционная проекция задаётся в specs/sql/mapping.json; файл specs/prisma/schema.prisma генерируется скриптом tools/generate_prisma_schema.py (не правьте schema.prisma вручную — перегенерируйте после изменения specs/sql/mapping.json). Семантика совпадает с SQL-импортом: Decision только при непустом Id решения; EducationalProgram с полем Int program_slot в составном @@id; program_id (реестр) допускает null и повторы между строками.",
   "sql_mapping": "specs/sql/mapping.json",
   "generator": {
     "schema_output": "specs/prisma/schema.prisma",

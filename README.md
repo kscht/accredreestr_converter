@@ -36,7 +36,7 @@ python convert.py data/data-*-structure-*.xml \
 
 - **`specs/`** — машиночитаемые артефакты: маппинги KG/SQL/Prisma, JSON Schema, эталонный XML структуры, `field_labels.json`.
 - **`tools/`** — скрипты перегенерации (`generate_*`) из `specs/` и констант `convert.py`.
-- **Корень** — основной CLI (`convert.py`, `download.py`, `scrape_opendata.py`) и пакет `sql_convert/`.
+- **Корень** — основной CLI (`convert.py`, `download.py`, `scrape_opendata.py`), пакеты `sql_convert/` и `parquet_convert/`.
 
 | Путь | Назначение |
 |------|------------|
@@ -50,19 +50,22 @@ python convert.py data/data-*-structure-*.xml \
 | `specs/prisma/schema.prisma` | Схема Prisma (перегенерировать после смены SQL-mapping) |
 | `specs/json-schema/certificate-line.schema.json` | JSON Schema (2020-12) для одной строки JSONL |
 | `tools/generate_json_schema.py` | Перегенерация JSON Schema |
+| `tools/sample_jsonl_lines.py` | Случайная подвыборка N строк из большого JSONL (резервуар, один проход) |
 | `docs/knowledge_graph.md` | Пояснения к KG: RDF, property graph, ограничения |
 | `docs/sql_convert.md` | Пояснения к SQL: ключи, вложенность, типы |
+| `docs/parquet_duckdb.md` | JSONL → DuckDB и Parquet |
 | `docs/prisma.md` | Prisma: генерация schema, Datasource, ограничения |
 | `docs/json_schema.md` | JSON Schema: проверка строк, ограничения |
 | `sql_convert/import_sql.py` | Импорт JSONL в SQLite, PostgreSQL или MySQL (`python -m sql_convert.import_sql …`) |
-| `sql_convert/sql_ddl.py` | DDL из `specs/sql/mapping.json` |
+| `sql_convert/sql_ddl.py` | DDL из `specs/sql/mapping.json` (в т.ч. диалект DuckDB) |
+| `parquet_convert/import_duckdb.py` | Импорт JSONL в DuckDB и/или выгрузка таблиц в Parquet (`python -m parquet_convert.import_duckdb …`) |
 | `download.py` | Скачивание XML (в т.ч. `--discover`) |
 | `scrape_opendata.py` | Поиск актуальных URL XML на странице opendata |
 | `specs/xml/data-20160908-structure-20160713.xml` | Эталон структуры полей (схема для неизвестных тегов) |
 | `data/` | Скачанные `.xml` (в git не коммитятся, см. `.gitignore`) |
 | `out/` | Результаты конвертации (`.jsonl`, логи, `--report`) — каталог в git не коммитится |
 | `tests/` | `pytest`, фикстуры в `tests/fixtures/` |
-| `requirements.txt` | `lxml`, `requests`, `pytest`, `jsonschema`, `psycopg[binary]`, `pymysql` |
+| `requirements.txt` | `lxml`, `requests`, `pytest`, `jsonschema`, `psycopg[binary]`, `pymysql`, `duckdb` |
 | `AGENTS.md` | Краткий контекст для ИИ / нового чата |
 
 ## Откуда брать данные
@@ -87,6 +90,8 @@ https://isga.obrnadzor.gov.ru/accredreestr/opendata/
 
 Корень: `OpenData` → `Certificates` → `Certificate`. Коллекции: `Supplements`/`Supplement`, `Decisions`/`Decision`, `EducationalPrograms`/`EducationalProgram`; вложенность `ActualEducationOrganization`.  
 В JSON каждая строка содержит **`_source_file`** — имя исходного XML (без пути).
+
+**Решения без идентификатора документа:** если у `<Decision>` в выгрузке пустой `<Id/>`, конвертер честно кладёт в JSON `Decisions[]` объект с `Id: null` (организация и свидетельство в строке **остаются**). При загрузке в SQL/DuckDB/Parquet по `specs/sql/mapping.json` строка в таблице **`decisions`** для такого элемента **не создаётся** (нужен непустой ключ документа); это не означает «нет организации», а означает «нет отдельной реляционной записи о документе без `Id` в источнике». Подробнее: [`docs/sql_convert.md`](docs/sql_convert.md), [`docs/knowledge_graph.md`](docs/knowledge_graph.md).
 
 ## Установка
 
@@ -152,7 +157,18 @@ python -m sql_convert.import_sql out/data.jsonl --postgres "postgresql://user:pa
 python -m sql_convert.import_sql out/data.jsonl --mysql "mysql://user:pass@localhost:3306/db" --recreate
 ```
 
-Подробности и опции — в [`docs/sql_convert.md`](docs/sql_convert.md).
+Подробности и опции — в [`docs/sql_convert.md`](docs/sql_convert.md) (PK по таблицам, `program_slot`, политика `decisions`).
+
+## Импорт в DuckDB и Parquet (`parquet_convert`)
+
+Та же нормализация по `specs/sql/mapping.json`, что и для SQL — в **DuckDB** (файл `.duckdb`) и при необходимости в набор **`.parquet`** (по одному файлу на таблицу):
+
+```bash
+python -m parquet_convert.import_duckdb out/data.jsonl --duckdb data/warehouse.duckdb --recreate
+python -m parquet_convert.import_duckdb out/data.jsonl --parquet-dir out/parquet --recreate
+```
+
+Подробности — в [`docs/parquet_duckdb.md`](docs/parquet_duckdb.md).
 
 ## Обработка «грязных» данных
 
@@ -168,7 +184,7 @@ python -m sql_convert.import_sql out/data.jsonl --mysql "mysql://user:pass@local
 {"Id":"123","IsFederal":true,"Supplements":[],"Decisions":[],"_source_file":"federal.xml"}
 ```
 
-## Knowledge Graph, SQL, Prisma и JSON Schema
+## Knowledge Graph, SQL, DuckDB/Parquet, Prisma и JSON Schema
 
 Для **графа** (property graph, RDF, Datalog как EDB):
 
@@ -179,6 +195,10 @@ python -m sql_convert.import_sql out/data.jsonl --mysql "mysql://user:pass@local
 
 - [`specs/sql/mapping.json`](specs/sql/mapping.json);
 - [`docs/sql_convert.md`](docs/sql_convert.md).
+
+Для **DuckDB** и колоночных файлов **Parquet** (та же схема таблиц):
+
+- [`docs/parquet_duckdb.md`](docs/parquet_duckdb.md).
 
 Для **Prisma ORM** (клиент по той же схеме, что и SQL):
 
@@ -192,7 +212,7 @@ python -m sql_convert.import_sql out/data.jsonl --mysql "mysql://user:pass@local
 - [`docs/json_schema.md`](docs/json_schema.md);
 - перегенерация: **`python tools/generate_json_schema.py`**.
 
-Карты KG/SQL/Prisma и схема JSON описывают одну модель данных; при изменении конвертера обновляйте их согласованно.
+Карты KG/SQL/Prisma и схема JSON описывают одну модель данных; при изменении конвертера обновляйте их согласованно. Импорт в DuckDB/Parquet использует тот же SQL-mapping.
 
 ## Работа с результатом
 
@@ -219,3 +239,9 @@ pytest
 ```
 
 Долгий тест: `RUN_SLOW=1 pytest -k streaming`.
+
+Импорт **живой** подвыборки в SQLite (нужен файл `out/sample_live_5000.jsonl`, см. [`docs/parquet_duckdb.md`](docs/parquet_duckdb.md)):
+
+```bash
+ACCRED_SQL_LIVE_SAMPLE=1 pytest tests/test_import_sql_live_sample.py -q
+```
