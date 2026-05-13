@@ -9,7 +9,7 @@
 
 ## Машиночитаемая карта
 
-Файл **[`../kg/mapping.json`](../kg/mapping.json)** задаёт:
+Файл **[`../specs/kg/mapping.json`](../specs/kg/mapping.json)** задаёт:
 
 - виды узлов (`Certificate`, `Supplement`, `Decision`, `EducationalProgram`, `ActualEducationOrganization`);
 - шаблоны глобальных `id` (`urn:accred:v1:…`);
@@ -36,8 +36,8 @@
 
 ## Связь с подписями полей
 
-Русские подписи из паспорта набора — в **`field_labels.json`** (пути вида `Certificate/…`). Их можно подвесить как `rdfs:label` / свойство `ui_label` на предикатах или свойствах графа.
+Русские подписи из паспорта набора — в **`specs/field_labels.json`** (пути вида `Certificate/…`). Их можно подвесить как `rdfs:label` / свойство `ui_label` на предикатах или свойствах графа.
 
-## Параллельно: SQL
+## Параллельно: SQL и Prisma
 
-Та же декомпозиция строки описана для реляционной загрузки: [`sql/mapping.json`](../sql/mapping.json), [`sql_import.md`](sql_import.md). Для проверки формы JSON — [`json-schema/certificate-line.schema.json`](../json-schema/certificate-line.schema.json), [`json_schema.md`](json_schema.md).
+Та же декомпозиция строки описана для реляционной загрузки: [`specs/sql/mapping.json`](../specs/sql/mapping.json), [`sql_convert.md`](sql_convert.md). Схема Prisma генерируется из того же SQL-mapping: [`specs/prisma/mapping.json`](../specs/prisma/mapping.json), [`prisma.md`](prisma.md). Для проверки формы JSON — [`specs/json-schema/certificate-line.schema.json`](../specs/json-schema/certificate-line.schema.json), [`json_schema.md`](json_schema.md).

@@ -2,10 +2,10 @@
 
 from pathlib import Path
 
-from generate_field_labels import build_labels
+from tools.generate_field_labels import build_labels
 
 ROOT = Path(__file__).resolve().parents[1]
-SCHEMA = ROOT / "data-20160908-structure-20160713.xml"
+SCHEMA = ROOT / "specs" / "xml" / "data-20160908-structure-20160713.xml"
 
 
 def test_build_labels_certificate_and_supplement_id_differ() -> None:

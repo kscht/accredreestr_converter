@@ -56,7 +56,7 @@ COLLECTION_DEFAULTS: Final[dict[str, tuple[str, ...]]] = {
     "Supplement": ("EducationalPrograms",),
 }
 
-# Имя эталонного файла структуры в корне проекта (рядом с этим модулем)
+# Имя эталонного XML структуры (лежит в specs/xml/)
 DEFAULT_SCHEMA_FILENAME: Final[str] = "data-20160908-structure-20160713.xml"
 
 _BOOL_TRUE: Final[frozenset[str]] = frozenset(
@@ -87,7 +87,7 @@ def _project_root() -> Path:
 
 def default_schema_path() -> Path:
     """Путь к эталонному XML со структурой полей."""
-    return _project_root() / DEFAULT_SCHEMA_FILENAME
+    return _project_root() / "specs" / "xml" / DEFAULT_SCHEMA_FILENAME
 
 
 def load_schema_tag_names(schema_path: Path) -> set[str]:

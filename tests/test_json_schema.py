@@ -11,9 +11,9 @@ import pytest
 import convert as c
 
 ROOT = Path(__file__).resolve().parents[1]
-SCHEMA_PATH = ROOT / "json-schema" / "certificate-line.schema.json"
+SCHEMA_PATH = ROOT / "specs" / "json-schema" / "certificate-line.schema.json"
 FIXTURES = ROOT / "tests" / "fixtures"
-XML_SCHEMA = ROOT / "data-20160908-structure-20160713.xml"
+XML_SCHEMA = ROOT / "specs" / "xml" / "data-20160908-structure-20160713.xml"
 
 
 @pytest.fixture(scope="module")

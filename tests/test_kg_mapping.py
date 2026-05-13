@@ -1,10 +1,10 @@
-"""Смоук-тест: kg/mapping.json парсится и содержит ожидаемую структуру."""
+"""Смоук-тест: specs/kg/mapping.json парсится и содержит ожидаемую структуру."""
 
 import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-MAPPING = ROOT / "kg" / "mapping.json"
+MAPPING = ROOT / "specs" / "kg" / "mapping.json"
 
 
 def test_kg_mapping_json_loads() -> None:

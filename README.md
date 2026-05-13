@@ -34,25 +34,35 @@ python convert.py data/data-*-structure-*.xml \
 
 ## Структура репозитория
 
+- **`specs/`** — машиночитаемые артефакты: маппинги KG/SQL/Prisma, JSON Schema, эталонный XML структуры, `field_labels.json`.
+- **`tools/`** — скрипты перегенерации (`generate_*`) из `specs/` и констант `convert.py`.
+- **Корень** — основной CLI (`convert.py`, `download.py`, `scrape_opendata.py`) и пакет `sql_convert/`.
+
 | Путь | Назначение |
 |------|------------|
-| `generate_field_labels.py` | Генерация `field_labels.json` из эталонной XML-схемы |
-| `field_labels.json` | Подписи полей для UI (`python generate_field_labels.py`) |
+| `tools/generate_field_labels.py` | Генерация `specs/field_labels.json` из эталонной XML-схемы |
+| `specs/field_labels.json` | Подписи полей для UI (`python tools/generate_field_labels.py`) |
 | `convert.py` | Конвертация XML → JSONL, CLI |
-| `kg/mapping.json` | Карта узлов/рёбер для Knowledge Graph из JSONL |
-| `sql/mapping.json` | Таблицы / PK / FK для импорта JSONL в SQL (ориентир PostgreSQL) |
-| `json-schema/certificate-line.schema.json` | JSON Schema (2020-12) для одной строки JSONL |
-| `generate_json_schema.py` | Перегенерация `certificate-line.schema.json` |
+| `specs/kg/mapping.json` | Карта узлов/рёбер для Knowledge Graph из JSONL |
+| `specs/sql/mapping.json` | Таблицы / PK / FK для импорта JSONL в SQL и для генерации Prisma |
+| `specs/prisma/mapping.json` | Метаданные генерации `specs/prisma/schema.prisma` |
+| `tools/generate_prisma_schema.py` | Генерация `specs/prisma/schema.prisma` из `specs/sql/mapping.json` |
+| `specs/prisma/schema.prisma` | Схема Prisma (перегенерировать после смены SQL-mapping) |
+| `specs/json-schema/certificate-line.schema.json` | JSON Schema (2020-12) для одной строки JSONL |
+| `tools/generate_json_schema.py` | Перегенерация JSON Schema |
 | `docs/knowledge_graph.md` | Пояснения к KG: RDF, property graph, ограничения |
-| `docs/sql_import.md` | Пояснения к SQL: ключи, вложенность, типы |
+| `docs/sql_convert.md` | Пояснения к SQL: ключи, вложенность, типы |
+| `docs/prisma.md` | Prisma: генерация schema, Datasource, ограничения |
 | `docs/json_schema.md` | JSON Schema: проверка строк, ограничения |
+| `sql_convert/import_sql.py` | Импорт JSONL в SQLite, PostgreSQL или MySQL (`python -m sql_convert.import_sql …`) |
+| `sql_convert/sql_ddl.py` | DDL из `specs/sql/mapping.json` |
 | `download.py` | Скачивание XML (в т.ч. `--discover`) |
 | `scrape_opendata.py` | Поиск актуальных URL XML на странице opendata |
-| `data-20160908-structure-20160713.xml` | Эталон структуры полей (схема для неизвестных тегов) |
+| `specs/xml/data-20160908-structure-20160713.xml` | Эталон структуры полей (схема для неизвестных тегов) |
 | `data/` | Скачанные `.xml` (в git не коммитятся, см. `.gitignore`) |
 | `out/` | Результаты конвертации (`.jsonl`, логи, `--report`) — каталог в git не коммитится |
 | `tests/` | `pytest`, фикстуры в `tests/fixtures/` |
-| `requirements.txt` | `lxml`, `requests`, `pytest`, `jsonschema` (валидация JSON Schema в тестах) |
+| `requirements.txt` | `lxml`, `requests`, `pytest`, `jsonschema`, `psycopg[binary]`, `pymysql` |
 | `AGENTS.md` | Краткий контекст для ИИ / нового чата |
 
 ## Откуда брать данные
@@ -129,8 +139,20 @@ python convert.py data/big.xml -o out/big.jsonl --strict
 Своя схема для проверки неизвестных тегов:
 
 ```bash
-python convert.py input.xml -o out.jsonl --schema data-20160908-structure-20160713.xml
+python convert.py input.xml -o out.jsonl --schema specs/xml/data-20160908-structure-20160713.xml
 ```
+
+## Импорт в SQL (`sql_convert`)
+
+После конвертации в JSONL — загрузка в **SQLite**, **PostgreSQL** или **MySQL** по `specs/sql/mapping.json`:
+
+```bash
+python -m sql_convert.import_sql out/data.jsonl --sqlite data/accred.db --recreate
+python -m sql_convert.import_sql out/data.jsonl --postgres "postgresql://user:pass@localhost:5432/db" --recreate
+python -m sql_convert.import_sql out/data.jsonl --mysql "mysql://user:pass@localhost:3306/db" --recreate
+```
+
+Подробности и опции — в [`docs/sql_convert.md`](docs/sql_convert.md).
 
 ## Обработка «грязных» данных
 
@@ -146,25 +168,31 @@ python convert.py input.xml -o out.jsonl --schema data-20160908-structure-201607
 {"Id":"123","IsFederal":true,"Supplements":[],"Decisions":[],"_source_file":"federal.xml"}
 ```
 
-## Knowledge Graph, SQL и JSON Schema
+## Knowledge Graph, SQL, Prisma и JSON Schema
 
 Для **графа** (property graph, RDF, Datalog как EDB):
 
-- [`kg/mapping.json`](kg/mapping.json);
+- [`specs/kg/mapping.json`](specs/kg/mapping.json);
 - [`docs/knowledge_graph.md`](docs/knowledge_graph.md).
 
 Для **реляционной** загрузки (PostgreSQL и аналоги):
 
-- [`sql/mapping.json`](sql/mapping.json);
-- [`docs/sql_import.md`](docs/sql_import.md).
+- [`specs/sql/mapping.json`](specs/sql/mapping.json);
+- [`docs/sql_convert.md`](docs/sql_convert.md).
+
+Для **Prisma ORM** (клиент по той же схеме, что и SQL):
+
+- [`specs/prisma/mapping.json`](specs/prisma/mapping.json), [`specs/prisma/schema.prisma`](specs/prisma/schema.prisma);
+- перегенерация: **`python tools/generate_prisma_schema.py`**;
+- [`docs/prisma.md`](docs/prisma.md).
 
 Для **валидации** структуры одной строки JSONL (IDE, CI, внешние пайплайны):
 
-- [`json-schema/certificate-line.schema.json`](json-schema/certificate-line.schema.json);
+- [`specs/json-schema/certificate-line.schema.json`](specs/json-schema/certificate-line.schema.json);
 - [`docs/json_schema.md`](docs/json_schema.md);
-- перегенерация: **`python generate_json_schema.py`**.
+- перегенерация: **`python tools/generate_json_schema.py`**.
 
-Карты KG/SQL и схема JSON описывают одну модель данных; при изменении конвертера обновляйте их согласованно.
+Карты KG/SQL/Prisma и схема JSON описывают одну модель данных; при изменении конвертера обновляйте их согласованно.
 
 ## Работа с результатом
 

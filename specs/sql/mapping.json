@@ -1,7 +1,7 @@
 {
   "format_version": 1,
   "source_profile": "jsonl_one_object_per_line_root_equals_certificate_record",
-  "description_ru": "Нормализованная реляционная проекция строк JSONL: таблицы, составные ключи и внешние ключи для ETL / генерации DDL (ориентир PostgreSQL).",
+  "description_ru": "Нормализованная реляционная проекция строк JSONL: таблицы, составные ключи и внешние ключи для ETL / генерации DDL. Один файл описывает схему для SQLite, PostgreSQL и MySQL (InnoDB); физические типы и кавычки идентификаторов задаёт диалект в sql_convert/sql_ddl.py.",
   "naming": {
     "tables": "snake_case plural",
     "columns": "snake_case",
@@ -497,7 +497,7 @@
             "supplement_id"
           ],
           "on_delete": "CASCADE",
-          "note_ru": "Только для ae_scope = supplement; для certificate supplement_id = '' или NULL по политике ETL (см. docs/sql_import.md)."
+          "note_ru": "Только для ae_scope = supplement; для certificate supplement_id = '' или NULL по политике ETL (см. docs/sql_convert.md)."
         }
       ],
       "columns": [
@@ -660,8 +660,8 @@
     }
   ],
   "related_artifacts": [
-    "kg/mapping.json",
-    "json-schema/certificate-line.schema.json",
-    "field_labels.json"
+    "specs/kg/mapping.json",
+    "specs/json-schema/certificate-line.schema.json",
+    "specs/field_labels.json"
   ]
 }

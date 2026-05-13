@@ -1,5 +1,5 @@
 {
-  "generated_from": "data-20160908-structure-20160713.xml",
+  "generated_from": "specs/xml/data-20160908-structure-20160713.xml",
   "by_schema_path": {
     "Certificate/ActualEducationOrganization/Email": "Адрес электронной почты организации",
     "Certificate/ActualEducationOrganization/Fax": "(3452)  Факс",

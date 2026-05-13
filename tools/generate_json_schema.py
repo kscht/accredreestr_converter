@@ -8,9 +8,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 import convert
 
-OUT_DEFAULT = Path(__file__).resolve().parent / "json-schema" / "certificate-line.schema.json"
+OUT_DEFAULT = REPO_ROOT / "specs" / "json-schema" / "certificate-line.schema.json"
 
 # Скаляры на корне объекта (как в XML Certificate, без вложенных коллекций / AEO)
 ROOT_SCALAR_TAGS: tuple[str, ...] = (
@@ -159,7 +163,7 @@ def build_schema_dict() -> dict[str, Any]:
 
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "https://github.com/kscht/accredreestr_converter/json-schema/certificate-line.schema.json",
+        "$id": "https://github.com/kscht/accredreestr_converter/specs/json-schema/certificate-line.schema.json",
         "title": "Строка JSONL: свидетельство (Certificate)",
         "description": (
             "Один объект JSON из выхода convert.py: поля сертификата, "

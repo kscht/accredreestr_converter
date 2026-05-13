@@ -16,7 +16,7 @@ import convert as c
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / "tests" / "fixtures"
-SCHEMA = ROOT / "data-20160908-structure-20160713.xml"
+SCHEMA = ROOT / "specs" / "xml" / "data-20160908-structure-20160713.xml"
 
 
 def _run_convert_cli(args: list[str]) -> subprocess.CompletedProcess[str]:

@@ -1,6 +1,6 @@
 """Строит словарь русских подписей полей из эталонного XML структуры (текст внутри тегов).
 
-В файле ``data-*-structure-*.xml`` имена тегов — латиница, а человекочитаемое описание
+В файле ``specs/xml/data-*-structure-*.xml`` имена тегов — латиница, а человекочитаемое описание
 лежит в текстовом содержимом листовых элементов. Пути совпадают с логикой ``convert.py``
 (префикс ``Certificate/...``).
 """
@@ -16,8 +16,9 @@ from typing import Any
 
 from lxml import etree
 
-DEFAULT_SCHEMA = Path(__file__).resolve().parent / "data-20160908-structure-20160713.xml"
-DEFAULT_OUT = Path(__file__).resolve().parent / "field_labels.json"
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_SCHEMA = REPO_ROOT / "specs" / "xml" / "data-20160908-structure-20160713.xml"
+DEFAULT_OUT = REPO_ROOT / "specs" / "field_labels.json"
 
 
 def _localname(el: etree._Element) -> str:
@@ -61,8 +62,13 @@ def build_labels(schema_path: Path) -> dict[str, Any]:
         by_last[path.split("/")[-1]].append(path)
     ambiguous = {k: sorted(v) for k, v in by_last.items() if len(v) > 1}
 
+    try:
+        gen_from = str(schema_path.resolve().relative_to(REPO_ROOT))
+    except ValueError:
+        gen_from = schema_path.name
+
     return {
-        "generated_from": schema_path.name,
+        "generated_from": gen_from,
         "by_schema_path": dict(sorted(by_path.items())),
         "tags_with_multiple_paths": dict(sorted(ambiguous.items())),
     }
@@ -76,14 +82,14 @@ def main(argv: list[str] | None = None) -> int:
         "--schema",
         type=Path,
         default=DEFAULT_SCHEMA,
-        help="Путь к XML структуры (по умолчанию эталон в корне репозитория)",
+        help="Путь к XML структуры (по умолчанию specs/xml/data-20160908-structure-20160713.xml)",
     )
     p.add_argument(
         "-o",
         "--output",
         type=Path,
         default=DEFAULT_OUT,
-        help="Куда записать JSON (по умолчанию field_labels.json в корне)",
+        help="Куда записать JSON (по умолчанию specs/field_labels.json)",
     )
     args = p.parse_args(argv)
     if not args.schema.is_file():

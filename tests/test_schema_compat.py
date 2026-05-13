@@ -10,7 +10,7 @@ from lxml import etree
 import convert as c
 
 ROOT = Path(__file__).resolve().parents[1]
-SCHEMA = ROOT / "data-20160908-structure-20160713.xml"
+SCHEMA = ROOT / "specs" / "xml" / "data-20160908-structure-20160713.xml"
 
 
 def test_schema_file_exists() -> None:

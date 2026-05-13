@@ -1,10 +1,10 @@
-"""Смоук-тест: sql/mapping.json парсится и содержит ожидаемые таблицы."""
+"""Смоук-тест: specs/sql/mapping.json парсится и содержит ожидаемые таблицы."""
 
 import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-MAPPING = ROOT / "sql" / "mapping.json"
+MAPPING = ROOT / "specs" / "sql" / "mapping.json"
 
 
 def test_sql_mapping_json_loads() -> None:

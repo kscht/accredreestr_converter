@@ -6,15 +6,15 @@
 
 | Файл | Назначение |
 |------|------------|
-| [`../json-schema/certificate-line.schema.json`](../json-schema/certificate-line.schema.json) | Схема draft 2020-12 |
-| [`../generate_json_schema.py`](../generate_json_schema.py) | Перегенерация схемы из списков полей и констант `convert.py` |
+| [`../specs/json-schema/certificate-line.schema.json`](../specs/json-schema/certificate-line.schema.json) | Схема draft 2020-12 |
+| [`../tools/generate_json_schema.py`](../tools/generate_json_schema.py) | Перегенерация схемы из списков полей и констант `convert.py` |
 
 Пересборка после изменения типов или набора полей в конвертере:
 
 ```bash
-python generate_json_schema.py
+python tools/generate_json_schema.py
 # или
-python generate_json_schema.py -o json-schema/certificate-line.schema.json
+python tools/generate_json_schema.py -o specs/json-schema/certificate-line.schema.json
 ```
 
 ## Проверка данных
@@ -38,4 +38,4 @@ python -c "import json; o=json.load(open('/tmp/one.json')); json.dump(o, open('/
 
 ## Связь с KG и SQL
 
-Те же логические сущности: [`kg/mapping.json`](../kg/mapping.json), [`sql/mapping.json`](../sql/mapping.json). Подписи полей — [`field_labels.json`](../field_labels.json). При добавлении полей в конвертер обновляйте **`generate_json_schema.py`** и перегенерируйте **`certificate-line.schema.json`**.
+Те же логические сущности: [`specs/kg/mapping.json`](../specs/kg/mapping.json), [`specs/sql/mapping.json`](../specs/sql/mapping.json). Подписи полей — [`specs/field_labels.json`](../specs/field_labels.json). При добавлении полей в конвертер обновляйте **`tools/generate_json_schema.py`** и перегенерируйте **`specs/json-schema/certificate-line.schema.json`**.

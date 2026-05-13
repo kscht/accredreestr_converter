@@ -226,9 +226,9 @@
     }
   ],
   "related_artifacts": [
-    "sql/mapping.json",
-    "json-schema/certificate-line.schema.json",
-    "field_labels.json",
-    "data-20160908-structure-20160713.xml"
+    "specs/sql/mapping.json",
+    "specs/json-schema/certificate-line.schema.json",
+    "specs/field_labels.json",
+    "specs/xml/data-20160908-structure-20160713.xml"
   ]
 }

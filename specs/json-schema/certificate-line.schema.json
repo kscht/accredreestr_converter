@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/kscht/accredreestr_converter/json-schema/certificate-line.schema.json",
+  "$id": "https://github.com/kscht/accredreestr_converter/specs/json-schema/certificate-line.schema.json",
   "title": "Строка JSONL: свидетельство (Certificate)",
   "description": "Один объект JSON из выхода convert.py: поля сертификата, массивы Supplements/Decisions, опциональный ActualEducationOrganization. Неизвестные теги из XML могут появиться как дополнительные ключи.",
   "type": "object",
