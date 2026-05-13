@@ -1,0 +1,234 @@
+{
+  "format_version": 1,
+  "source_profile": "jsonl_one_object_per_line_root_equals_certificate_record",
+  "description_ru": "Описание узлов и рёбер для построения property graph или RDF из строк JSONL конвертера. Идентификаторы — шаблоны: подставляйте значения из той же строки JSON; при коллизиях добавляйте версию снимка.",
+  "id_conventions": {
+    "namespace": "urn:accred:v1:",
+    "rules": [
+      "Все глобальные URI строить из состава: namespace + kind + ':' + устойчивый локальный ключ.",
+      "Локальный ключ сертификата: basename(_source_file) + ':' + строковое значение поля Id.",
+      "Дочерние сущности включают в ключ идентификатор родителя, чтобы Id внутри приложения не путался между сертификатами."
+    ]
+  },
+  "node_kinds": [
+    {
+      "kind": "Certificate",
+      "description_ru": "Свидетельство (корень объекта в строке JSONL)",
+      "id_template": "urn:accred:v1:Certificate:{_source_file_basename}:{Id}",
+      "id_fields": ["_source_file", "Id"],
+      "scalar_property_groups": [
+        {
+          "group": "certificate_core",
+          "json_keys": [
+            "IsFederal",
+            "StatusName",
+            "TypeName",
+            "RegionName",
+            "RegionCode",
+            "FederalDistrictName",
+            "FederalDistrictShortName",
+            "RegNumber",
+            "SerialNumber",
+            "FormNumber",
+            "IssueDate",
+            "EndDate",
+            "ControlOrgan",
+            "PostAddress"
+          ]
+        },
+        {
+          "group": "edu_org_flat_on_certificate",
+          "description_ru": "Поля организации, продублированные на корне сертификата (как в XML)",
+          "json_keys": [
+            "EduOrgFullName",
+            "EduOrgShortName",
+            "EduOrgINN",
+            "EduOrgKPP",
+            "EduOrgOGRN",
+            "IndividualEntrepreneurLastName",
+            "IndividualEntrepreneurFirstName",
+            "IndividualEntrepreneurMiddleName",
+            "IndividualEntrepreneurAddress",
+            "IndividualEntrepreneurEGRIP",
+            "IndividualEntrepreneurINN"
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "Supplement",
+      "description_ru": "Приложение к свидетельству",
+      "id_template": "urn:accred:v1:Supplement:{_source_file_basename}:{certificate_Id}:{Supplement.Id}",
+      "id_fields": ["_source_file", "Id", "Supplements[].Id"],
+      "json_container": "Supplements",
+      "item_key": "Supplement",
+      "scalar_property_groups": [
+        {
+          "group": "supplement_core",
+          "json_keys": [
+            "StatusName",
+            "StatusCode",
+            "Number",
+            "SerialNumber",
+            "FormNumber",
+            "IssueDate",
+            "IsForBranch",
+            "Note",
+            "EduOrgFullName",
+            "EduOrgShortName",
+            "EduOrgAddress",
+            "EduOrgKPP"
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "Decision",
+      "description_ru": "Распорядительный документ",
+      "id_template": "urn:accred:v1:Decision:{_source_file_basename}:{certificate_Id}:{Decision.Id}",
+      "id_fields": ["_source_file", "Id", "Decisions[].Id"],
+      "json_container": "Decisions",
+      "item_key": "Decision",
+      "scalar_property_groups": [
+        {
+          "group": "decision_core",
+          "json_keys": [
+            "DecisionTypeName",
+            "OrderDocumentNumber",
+            "OrderDocumentKind",
+            "DecisionDate"
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "EducationalProgram",
+      "description_ru": "Образовательная программа внутри приложения",
+      "id_template": "urn:accred:v1:EducationalProgram:{_source_file_basename}:{certificate_Id}:{supplement_Id}:{EducationalProgram.Id}",
+      "id_fields": [
+        "_source_file",
+        "Id",
+        "Supplements[].Id",
+        "EducationalPrograms[].Id"
+      ],
+      "json_path": "Supplements[].EducationalPrograms[]",
+      "scalar_property_groups": [
+        {
+          "group": "program_core",
+          "json_keys": [
+            "TypeName",
+            "EduLevelName",
+            "ProgrammName",
+            "ProgrammCode",
+            "UGSName",
+            "UGSCode",
+            "EduNormativePeriod",
+            "Qualification",
+            "IsAccredited",
+            "IsCanceled",
+            "IsSuspended"
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "ActualEducationOrganization",
+      "description_ru": "Карточка образовательной организации (вложенный объект, не массив)",
+      "id_template": "urn:accred:v1:AEO:{_source_file_basename}:{certificate_Id}:{scope}:{AEO.Id}",
+      "id_fields": ["_source_file", "Id", "scope", "ActualEducationOrganization.Id"],
+      "scope_values": [
+        {
+          "value": "certificate",
+          "json_path": "ActualEducationOrganization",
+          "parent_kind": "Certificate"
+        },
+        {
+          "value": "supplement",
+          "json_path": "Supplements[].ActualEducationOrganization",
+          "parent_kind": "Supplement"
+        }
+      ],
+      "scalar_property_groups": [
+        {
+          "group": "aeo_core",
+          "json_keys": [
+            "FullName",
+            "ShortName",
+            "HeadEduOrgId",
+            "IsBranch",
+            "PostAddress",
+            "Phone",
+            "Fax",
+            "Email",
+            "WebSite",
+            "OGRN",
+            "INN",
+            "KPP",
+            "HeadPost",
+            "HeadName",
+            "FormName",
+            "KindName",
+            "TypeName",
+            "RegionName",
+            "FederalDistrictShortName",
+            "FederalDistrictName"
+          ]
+        }
+      ]
+    }
+  ],
+  "edge_kinds": [
+    {
+      "predicate": "hasSupplement",
+      "predicate_ru": "имеет приложение",
+      "from": "Certificate",
+      "to": "Supplement",
+      "cardinality": "1:N",
+      "via_json": "Supplements[]"
+    },
+    {
+      "predicate": "hasDecision",
+      "predicate_ru": "имеет распорядительный документ",
+      "from": "Certificate",
+      "to": "Decision",
+      "cardinality": "1:N",
+      "via_json": "Decisions[]"
+    },
+    {
+      "predicate": "hasEducationalProgram",
+      "predicate_ru": "содержит образовательную программу",
+      "from": "Supplement",
+      "to": "EducationalProgram",
+      "cardinality": "1:N",
+      "via_json": "EducationalPrograms[]"
+    },
+    {
+      "predicate": "hasActualEducationOrganization",
+      "predicate_ru": "ссылается на карточку ОО (как в выгрузке)",
+      "from": "Certificate",
+      "to": "ActualEducationOrganization",
+      "cardinality": "0:1",
+      "via_json": "ActualEducationOrganization"
+    },
+    {
+      "predicate": "hasActualEducationOrganization",
+      "predicate_ru": "ссылается на карточку ОО из приложения",
+      "from": "Supplement",
+      "to": "ActualEducationOrganization",
+      "cardinality": "0:1",
+      "via_json": "Supplements[].ActualEducationOrganization"
+    }
+  ],
+  "same_as_hints": [
+    {
+      "description_ru": "Опционально: связать узлы по ИНН/ОГРН между разными сертификатами (owl:sameAs / custom SAME_ORG) — только после нормализации идентификаторов",
+      "json_keys_candidates": ["INN", "OGRN", "EduOrgINN", "EduOrgOGRN", "KPP", "EduOrgKPP"]
+    }
+  ],
+  "related_artifacts": [
+    "sql/mapping.json",
+    "json-schema/certificate-line.schema.json",
+    "field_labels.json",
+    "data-20160908-structure-20160713.xml"
+  ]
+}

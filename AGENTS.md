@@ -11,7 +11,7 @@
 - Страница: `https://isga.obrnadzor.gov.ru/accredreestr/opendata/` (Vue SPA).
 - Список версий XML: тот же HTML, что у `https://isga.obrnadzor.gov.ru/api/spa/accredreestr/perechen` (iframe «Гиперссылки (URL) на версии набора данных»).
 - **`scrape_opendata.py`** — находит `app.*.js`, путь iframe, парсит ссылки `*.xml`.
-- **`download.py --discover`** — URL со страницы версий, **только последний снимок** по `data-YYYYMMDD-` в имени; **`--discover --all-versions`** — все ссылки. Потоковое скачивание в `data/` (`-o` = **каталог**).
+- **`download.py --discover`** — URL со страницы версий, **только последний снимок** по `data-YYYYMMDD-` в имени; **`--discover --all-versions`** — все ссылки. Потоковое скачивание в `data/` (`-o` = **каталог**). Список URL из файла: без аргументов читается **`download_urls.txt`** (или **`-c` / `--config`**).
 
 ## Эталон полей (схема)
 
@@ -25,9 +25,20 @@
 | `convert.py` | Парсинг, типы, CLI, `convert_many`, статистика |
 | `generate_field_labels.py` | JSON `field_labels.json`: путь `Certificate/…` → русская подпись из схемы |
 | `field_labels.json` | Сгенерированный словарь подписей для UI (перегенерация: `python generate_field_labels.py`) |
+| `kg/mapping.json` | Узлы/рёбра для Knowledge Graph из строк JSONL |
+| `sql/mapping.json` | Таблицы / PK / FK для импорта JSONL в SQL |
+| `json-schema/certificate-line.schema.json` | JSON Schema (2020-12) для одной строки JSONL |
+| `generate_json_schema.py` | Перегенерация JSON Schema |
+| `docs/knowledge_graph.md` | Пояснения к KG |
+| `docs/sql_import.md` | Пояснения к SQL-импорту |
+| `docs/json_schema.md` | JSON Schema: валидация, перегенерация |
 | `download.py` | Скачивание XML, `--discover`, `--save-urls` |
 | `scrape_opendata.py` | Только поиск URL |
 | `tests/test_convert.py` | Основные тесты |
+| `tests/test_json_schema.py` | JSON Schema vs фикстуры |
+| `tests/test_field_labels.py` | Генерация подписей |
+| `tests/test_kg_mapping.py` | Структура `kg/mapping.json` |
+| `tests/test_sql_mapping.py` | Структура `sql/mapping.json` |
 | `tests/test_schema_compat.py` | Константы ⊆ схема XML |
 | `tests/test_scrape_opendata.py` | Парсер HTML perechen |
 
@@ -55,7 +66,7 @@
 
 ## Зависимости
 
-`requirements.txt`: `lxml`, `requests`, `pytest`. В конвертере **нет** `xmltodict`, `pandas`, `pydantic`.
+`requirements.txt`: `lxml`, `requests`, `pytest`, **`jsonschema`** (проверка `certificate-line.schema.json` в тестах). В конвертере **нет** `xmltodict`, `pandas`, `pydantic`.
 
 ## Тесты
 
@@ -67,4 +78,4 @@ pytest
 ## Каталоги и gitignore
 
 - **`data/*.xml`** — не в репозитории (скачанные выгрузки).
-- **`out/*.jsonl`** — не в репозитории. Повторный запуск с тем же именем **перезаписывает** файл (`"w"`).
+- **`out/`** — не в репозитории (JSONL, логи, отчёты `convert.py`). Повторный запуск с тем же именем файла **перезаписывает** его (`"w"`).

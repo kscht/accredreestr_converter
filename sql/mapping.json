@@ -1,0 +1,667 @@
+{
+  "format_version": 1,
+  "source_profile": "jsonl_one_object_per_line_root_equals_certificate_record",
+  "description_ru": "Нормализованная реляционная проекция строк JSONL: таблицы, составные ключи и внешние ключи для ETL / генерации DDL (ориентир PostgreSQL).",
+  "naming": {
+    "tables": "snake_case plural",
+    "columns": "snake_case",
+    "json_Id_on_certificate": "Колонка certificate_id (значение из JSON поля Id корня строки)"
+  },
+  "primary_key_convention": {
+    "certificate": ["source_file", "certificate_id"],
+    "children": "Всегда включают (source_file, certificate_id) для ссылки на certificates; дочерние id — из соответствующего JSON Id."
+  },
+  "type_hints_ru": {
+    "TEXT": "Строки, «грязные» ИНН/ОГРН, даты если не нормализуете при загрузке.",
+    "BOOLEAN": "Только для полей, которые convert.py приводит к bool (см. BOOL_FIELDS в convert.py).",
+    "DATE": "Для дат в формате YYYY-MM-DD после конвертера; при сбое парсинга в JSON строка — грузите в TEXT или отдельную колонку raw.",
+    "INTEGER": "Редко; в выгрузке почти всё строковое."
+  },
+  "tables": [
+    {
+      "name": "certificates",
+      "description_ru": "Одна строка = одна строка JSONL (одно свидетельство).",
+      "primary_key": ["source_file", "certificate_id"],
+      "columns": [
+        {
+          "name": "source_file",
+          "from_json": "_source_file",
+          "sql_type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "certificate_id",
+          "from_json": "Id",
+          "sql_type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "is_federal",
+          "from_json": "IsFederal",
+          "sql_type": "BOOLEAN",
+          "nullable": true
+        },
+        {
+          "name": "status_name",
+          "from_json": "StatusName",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "type_name",
+          "from_json": "TypeName",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "region_name",
+          "from_json": "RegionName",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "region_code",
+          "from_json": "RegionCode",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "federal_district_name",
+          "from_json": "FederalDistrictName",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "federal_district_short_name",
+          "from_json": "FederalDistrictShortName",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "reg_number",
+          "from_json": "RegNumber",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "serial_number",
+          "from_json": "SerialNumber",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "form_number",
+          "from_json": "FormNumber",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "issue_date",
+          "from_json": "IssueDate",
+          "sql_type": "DATE",
+          "nullable": true,
+          "note_ru": "Если в JSON строка не ISO-дата — используйте TEXT или вторую колонку issue_date_raw."
+        },
+        {
+          "name": "end_date",
+          "from_json": "EndDate",
+          "sql_type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "control_organ",
+          "from_json": "ControlOrgan",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "post_address",
+          "from_json": "PostAddress",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "edu_org_full_name",
+          "from_json": "EduOrgFullName",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "edu_org_short_name",
+          "from_json": "EduOrgShortName",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "edu_org_inn",
+          "from_json": "EduOrgINN",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "edu_org_kpp",
+          "from_json": "EduOrgKPP",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "edu_org_ogrn",
+          "from_json": "EduOrgOGRN",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "individual_entrepreneur_last_name",
+          "from_json": "IndividualEntrepreneurLastName",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "individual_entrepreneur_first_name",
+          "from_json": "IndividualEntrepreneurFirstName",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "individual_entrepreneur_middle_name",
+          "from_json": "IndividualEntrepreneurMiddleName",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "individual_entrepreneur_address",
+          "from_json": "IndividualEntrepreneurAddress",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "individual_entrepreneur_egrip",
+          "from_json": "IndividualEntrepreneurEGRIP",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "individual_entrepreneur_inn",
+          "from_json": "IndividualEntrepreneurINN",
+          "sql_type": "TEXT",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "name": "supplements",
+      "description_ru": "Элементы массива JSON Supplements (вложенные объекты без обёртки Supplement в JSON — см. convert.py).",
+      "primary_key": ["source_file", "certificate_id", "supplement_id"],
+      "foreign_keys": [
+        {
+          "columns": ["source_file", "certificate_id"],
+          "references_table": "certificates",
+          "references_columns": ["source_file", "certificate_id"],
+          "on_delete": "CASCADE"
+        }
+      ],
+      "columns": [
+        {
+          "name": "source_file",
+          "from_json": "_source_file",
+          "sql_type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "certificate_id",
+          "from_json": "Id",
+          "context_ru": "Id сертификата родителя (корень той же строки JSONL)",
+          "sql_type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "supplement_id",
+          "from_json": "Id",
+          "context_ru": "Id внутри объекта элемента массива Supplements",
+          "sql_type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "status_name",
+          "from_json": "StatusName",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "status_code",
+          "from_json": "StatusCode",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "number",
+          "from_json": "Number",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "serial_number",
+          "from_json": "SerialNumber",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "form_number",
+          "from_json": "FormNumber",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "issue_date",
+          "from_json": "IssueDate",
+          "sql_type": "DATE",
+          "nullable": true
+        },
+        {
+          "name": "is_for_branch",
+          "from_json": "IsForBranch",
+          "sql_type": "BOOLEAN",
+          "nullable": true
+        },
+        {
+          "name": "note",
+          "from_json": "Note",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "edu_org_full_name",
+          "from_json": "EduOrgFullName",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "edu_org_short_name",
+          "from_json": "EduOrgShortName",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "edu_org_address",
+          "from_json": "EduOrgAddress",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "edu_org_kpp",
+          "from_json": "EduOrgKPP",
+          "sql_type": "TEXT",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "name": "decisions",
+      "description_ru": "Элементы массива JSON Decisions.",
+      "primary_key": ["source_file", "certificate_id", "decision_id"],
+      "foreign_keys": [
+        {
+          "columns": ["source_file", "certificate_id"],
+          "references_table": "certificates",
+          "references_columns": ["source_file", "certificate_id"],
+          "on_delete": "CASCADE"
+        }
+      ],
+      "columns": [
+        {
+          "name": "source_file",
+          "from_json": "_source_file",
+          "sql_type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "certificate_id",
+          "from_json": "Id",
+          "context_ru": "Id сертификата родителя",
+          "sql_type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "decision_id",
+          "from_json": "Id",
+          "context_ru": "Id внутри объекта элемента массива Decisions",
+          "sql_type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "decision_type_name",
+          "from_json": "DecisionTypeName",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "order_document_number",
+          "from_json": "OrderDocumentNumber",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "order_document_kind",
+          "from_json": "OrderDocumentKind",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "decision_date",
+          "from_json": "DecisionDate",
+          "sql_type": "DATE",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "name": "educational_programs",
+      "description_ru": "Программы внутри каждого элемента Supplements (массив EducationalPrograms).",
+      "primary_key": [
+        "source_file",
+        "certificate_id",
+        "supplement_id",
+        "program_id"
+      ],
+      "foreign_keys": [
+        {
+          "columns": ["source_file", "certificate_id", "supplement_id"],
+          "references_table": "supplements",
+          "references_columns": [
+            "source_file",
+            "certificate_id",
+            "supplement_id"
+          ],
+          "on_delete": "CASCADE"
+        }
+      ],
+      "columns": [
+        {
+          "name": "source_file",
+          "from_json": "_source_file",
+          "sql_type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "certificate_id",
+          "from_json": "Id",
+          "context_ru": "Id сертификата родителя",
+          "sql_type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "supplement_id",
+          "from_json": "Id",
+          "context_ru": "Id родительского приложения в массиве Supplements",
+          "sql_type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "program_id",
+          "from_json": "Id",
+          "context_ru": "Id программы внутри EducationalPrograms",
+          "sql_type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "type_name",
+          "from_json": "TypeName",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "edu_level_name",
+          "from_json": "EduLevelName",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "programm_name",
+          "from_json": "ProgrammName",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "programm_code",
+          "from_json": "ProgrammCode",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "ugs_name",
+          "from_json": "UGSName",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "ugs_code",
+          "from_json": "UGSCode",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "edu_normative_period",
+          "from_json": "EduNormativePeriod",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "qualification",
+          "from_json": "Qualification",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "is_accredited",
+          "from_json": "IsAccredited",
+          "sql_type": "BOOLEAN",
+          "nullable": true
+        },
+        {
+          "name": "is_canceled",
+          "from_json": "IsCanceled",
+          "sql_type": "BOOLEAN",
+          "nullable": true
+        },
+        {
+          "name": "is_suspended",
+          "from_json": "IsSuspended",
+          "sql_type": "BOOLEAN",
+          "nullable": true
+        }
+      ]
+    },
+    {
+      "name": "actual_education_organizations",
+      "description_ru": "Вложенный объект ActualEducationOrganization: либо на корне сертификата, либо внутри элемента Supplements. Различие по ae_scope и nullable supplement_id.",
+      "primary_key": [
+        "source_file",
+        "certificate_id",
+        "ae_scope",
+        "supplement_id",
+        "aeo_id"
+      ],
+      "foreign_keys": [
+        {
+          "columns": ["source_file", "certificate_id"],
+          "references_table": "certificates",
+          "references_columns": ["source_file", "certificate_id"],
+          "on_delete": "CASCADE"
+        },
+        {
+          "columns": ["source_file", "certificate_id", "supplement_id"],
+          "references_table": "supplements",
+          "references_columns": [
+            "source_file",
+            "certificate_id",
+            "supplement_id"
+          ],
+          "on_delete": "CASCADE",
+          "note_ru": "Только для ae_scope = supplement; для certificate supplement_id = '' или NULL по политике ETL (см. docs/sql_import.md)."
+        }
+      ],
+      "columns": [
+        {
+          "name": "source_file",
+          "from_json": "_source_file",
+          "sql_type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "certificate_id",
+          "from_json": "Id",
+          "context_ru": "Id сертификата родителя",
+          "sql_type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "ae_scope",
+          "from_json": null,
+          "literal_values": ["certificate", "supplement"],
+          "sql_type": "TEXT",
+          "nullable": false,
+          "note_ru": "Не из JSON: задаётся при разборе вложенности."
+        },
+        {
+          "name": "supplement_id",
+          "from_json": "Id",
+          "context_ru": "Id приложения, если ae_scope=supplement; иначе NULL или пустая строка по соглашению",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "aeo_id",
+          "from_json": "Id",
+          "context_ru": "Id внутри объекта ActualEducationOrganization",
+          "sql_type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "full_name",
+          "from_json": "FullName",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "short_name",
+          "from_json": "ShortName",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "head_edu_org_id",
+          "from_json": "HeadEduOrgId",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "is_branch",
+          "from_json": "IsBranch",
+          "sql_type": "BOOLEAN",
+          "nullable": true
+        },
+        {
+          "name": "post_address",
+          "from_json": "PostAddress",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "phone",
+          "from_json": "Phone",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "fax",
+          "from_json": "Fax",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "email",
+          "from_json": "Email",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "web_site",
+          "from_json": "WebSite",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "ogrn",
+          "from_json": "OGRN",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "inn",
+          "from_json": "INN",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "kpp",
+          "from_json": "KPP",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "head_post",
+          "from_json": "HeadPost",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "head_name",
+          "from_json": "HeadName",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "form_name",
+          "from_json": "FormName",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "kind_name",
+          "from_json": "KindName",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "type_name",
+          "from_json": "TypeName",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "region_name",
+          "from_json": "RegionName",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "federal_district_short_name",
+          "from_json": "FederalDistrictShortName",
+          "sql_type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "federal_district_name",
+          "from_json": "FederalDistrictName",
+          "sql_type": "TEXT",
+          "nullable": true
+        }
+      ]
+    }
+  ],
+  "related_artifacts": [
+    "kg/mapping.json",
+    "json-schema/certificate-line.schema.json",
+    "field_labels.json"
+  ]
+}

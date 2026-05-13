@@ -36,14 +36,23 @@ python convert.py data/data-*-structure-*.xml \
 
 | Путь | Назначение |
 |------|------------|
+| `generate_field_labels.py` | Генерация `field_labels.json` из эталонной XML-схемы |
+| `field_labels.json` | Подписи полей для UI (`python generate_field_labels.py`) |
 | `convert.py` | Конвертация XML → JSONL, CLI |
+| `kg/mapping.json` | Карта узлов/рёбер для Knowledge Graph из JSONL |
+| `sql/mapping.json` | Таблицы / PK / FK для импорта JSONL в SQL (ориентир PostgreSQL) |
+| `json-schema/certificate-line.schema.json` | JSON Schema (2020-12) для одной строки JSONL |
+| `generate_json_schema.py` | Перегенерация `certificate-line.schema.json` |
+| `docs/knowledge_graph.md` | Пояснения к KG: RDF, property graph, ограничения |
+| `docs/sql_import.md` | Пояснения к SQL: ключи, вложенность, типы |
+| `docs/json_schema.md` | JSON Schema: проверка строк, ограничения |
 | `download.py` | Скачивание XML (в т.ч. `--discover`) |
 | `scrape_opendata.py` | Поиск актуальных URL XML на странице opendata |
 | `data-20160908-structure-20160713.xml` | Эталон структуры полей (схема для неизвестных тегов) |
 | `data/` | Скачанные `.xml` (в git не коммитятся, см. `.gitignore`) |
-| `out/` | Результаты `.jsonl` (в git не коммитятся) |
+| `out/` | Результаты конвертации (`.jsonl`, логи, `--report`) — каталог в git не коммитится |
 | `tests/` | `pytest`, фикстуры в `tests/fixtures/` |
-| `requirements.txt` | `lxml`, `requests`, `pytest` |
+| `requirements.txt` | `lxml`, `requests`, `pytest`, `jsonschema` (валидация JSON Schema в тестах) |
 | `AGENTS.md` | Краткий контекст для ИИ / нового чата |
 
 ## Откуда брать данные
@@ -55,7 +64,7 @@ https://isga.obrnadzor.gov.ru/accredreestr/opendata/
 
 1. **`python download.py --discover -o data/`** — найдёт ссылки и скачает **только последний снимок** (максимальная дата `data-YYYYMMDD-` в имени файла). Все версии: **`--discover --all-versions`**.
 2. **`python scrape_opendata.py`** — те же URL в stdout (по умолчанию тоже только последний снимок); **`--all-versions`** — полный список; **`--json`** — JSON; **`-o файл`** — записать в файл.
-3. Вручную: URL в **`download_urls.txt`** или аргументами **`download.py`**.
+3. Вручную: URL в **`download_urls.txt`** (или другой файл — **`download.py -c путь`**) либо аргументами **`download.py`**.
 
 ### Как устроен автопоиск (`scrape_opendata.py`)
 
@@ -88,10 +97,10 @@ python download.py --discover -o data/
 python download.py --discover --all-versions -o data/   # все XML со страницы версий
 python download.py --discover -o data/ --save-urls download_urls.txt
 python download.py "https://..." "https://..." -o data/
-python download.py   # без URL — читает download_urls.txt (создаст шаблон при отсутствии)
+python download.py   # без URL — читает download_urls.txt (по умолчанию; см. -c/--config)
 ```
 
-Потоково по 1 МБ, опционально `Range`; при ошибке HTTP частичный файл удаляется.
+Потоково по 1 МБ, опционально `Range` (отключить: **`--no-resume`**); при ошибке HTTP частичный файл удаляется.
 
 ## Конвертация (`convert.py`)
 
@@ -136,6 +145,26 @@ python convert.py input.xml -o out.jsonl --schema data-20160908-structure-201607
 ```json
 {"Id":"123","IsFederal":true,"Supplements":[],"Decisions":[],"_source_file":"federal.xml"}
 ```
+
+## Knowledge Graph, SQL и JSON Schema
+
+Для **графа** (property graph, RDF, Datalog как EDB):
+
+- [`kg/mapping.json`](kg/mapping.json);
+- [`docs/knowledge_graph.md`](docs/knowledge_graph.md).
+
+Для **реляционной** загрузки (PostgreSQL и аналоги):
+
+- [`sql/mapping.json`](sql/mapping.json);
+- [`docs/sql_import.md`](docs/sql_import.md).
+
+Для **валидации** структуры одной строки JSONL (IDE, CI, внешние пайплайны):
+
+- [`json-schema/certificate-line.schema.json`](json-schema/certificate-line.schema.json);
+- [`docs/json_schema.md`](docs/json_schema.md);
+- перегенерация: **`python generate_json_schema.py`**.
+
+Карты KG/SQL и схема JSON описывают одну модель данных; при изменении конвертера обновляйте их согласованно.
 
 ## Работа с результатом
 

@@ -1,0 +1,666 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kscht/accredreestr_converter/json-schema/certificate-line.schema.json",
+  "title": "Строка JSONL: свидетельство (Certificate)",
+  "description": "Один объект JSON из выхода convert.py: поля сертификата, массивы Supplements/Decisions, опциональный ActualEducationOrganization. Неизвестные теги из XML могут появиться как дополнительные ключи.",
+  "type": "object",
+  "required": [
+    "_source_file"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "_source_file": {
+      "type": "string",
+      "description": "Имя исходного XML (добавляет convert.py)."
+    },
+    "Id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "IsFederal": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "StatusName": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "TypeName": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "RegionName": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "RegionCode": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "FederalDistrictName": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "FederalDistrictShortName": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "RegNumber": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "SerialNumber": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "FormNumber": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "IssueDate": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Обычно YYYY-MM-DD; при сбое парсинга — произвольная строка (см. convert.py)."
+    },
+    "EndDate": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Обычно YYYY-MM-DD; при сбое парсинга — произвольная строка (см. convert.py)."
+    },
+    "ControlOrgan": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "PostAddress": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "EduOrgFullName": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "EduOrgShortName": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "EduOrgINN": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "EduOrgKPP": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "EduOrgOGRN": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "IndividualEntrepreneurLastName": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "IndividualEntrepreneurFirstName": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "IndividualEntrepreneurMiddleName": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "IndividualEntrepreneurAddress": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "IndividualEntrepreneurEGRIP": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "IndividualEntrepreneurINN": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ActualEducationOrganization": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "Id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "FullName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ShortName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "HeadEduOrgId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "IsBranch": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "PostAddress": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Phone": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Fax": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Email": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "WebSite": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "OGRN": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "INN": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "KPP": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "HeadPost": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "HeadName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "FormName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "KindName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "TypeName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "RegionName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "FederalDistrictShortName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "FederalDistrictName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "Supplements": {
+      "type": "array",
+      "description": "Список объектов приложений (без обёртки ключа Supplement).",
+      "items": {
+        "$ref": "#/$defs/Supplement"
+      }
+    },
+    "Decisions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Decision"
+      }
+    }
+  },
+  "$defs": {
+    "Supplement": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "Id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "StatusName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "StatusCode": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Number": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "SerialNumber": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "FormNumber": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "IssueDate": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Обычно YYYY-MM-DD; при сбое парсинга — произвольная строка (см. convert.py)."
+        },
+        "IsForBranch": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "Note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "EduOrgFullName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "EduOrgShortName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "EduOrgAddress": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "EduOrgKPP": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "EducationalPrograms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EducationalProgram"
+          }
+        },
+        "ActualEducationOrganization": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true,
+          "properties": {
+            "Id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "FullName": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "ShortName": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "HeadEduOrgId": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "IsBranch": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "PostAddress": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "Phone": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "Fax": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "Email": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "WebSite": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "OGRN": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "INN": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "KPP": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "HeadPost": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "HeadName": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "FormName": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "KindName": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "TypeName": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "RegionName": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "FederalDistrictShortName": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "FederalDistrictName": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "Decision": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "Id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "DecisionTypeName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "OrderDocumentNumber": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "OrderDocumentKind": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "DecisionDate": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Обычно YYYY-MM-DD; при сбое парсинга — произвольная строка (см. convert.py)."
+        }
+      }
+    },
+    "EducationalProgram": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "Id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "TypeName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "EduLevelName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ProgrammName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ProgrammCode": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "UGSName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "UGSCode": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "EduNormativePeriod": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "Qualification": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "IsAccredited": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "IsCanceled": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "IsSuspended": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}
