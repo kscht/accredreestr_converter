@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenData>
+  <Certificates>
+    <Certificate>
+      <Id>br-1</Id>
+      <IsFederal>1</IsFederal>
+    </Certificate>
+    <Certificate>
+      <Id>br-2</Id>
+      <IsFederal>0</IsFederal>
+    </Certificate>
+  </Certificates>
+</OpenData>

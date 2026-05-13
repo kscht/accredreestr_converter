@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenData>
+  <Certificates>
+    <Certificate>
+      <Id>min-1</Id>
+      <IsFederal>1</IsFederal>
+      <RegNumber>RN-MIN</RegNumber>
+      <IssueDate>2020-01-15</IssueDate>
+      <EndDate>15.01.2025</EndDate>
+    </Certificate>
+  </Certificates>
+</OpenData>

@@ -1,0 +1,227 @@
+{
+  "generated_from": "data-20160908-structure-20160713.xml",
+  "by_schema_path": {
+    "Certificate/ActualEducationOrganization/Email": "Адрес электронной почты организации",
+    "Certificate/ActualEducationOrganization/Fax": "(3452)  Факс",
+    "Certificate/ActualEducationOrganization/FederalDistrictName": "Полное наименование Федерального округа",
+    "Certificate/ActualEducationOrganization/FederalDistrictShortName": "Сокращенное наименование Федерального округа",
+    "Certificate/ActualEducationOrganization/FormName": "Организационно правовая форма",
+    "Certificate/ActualEducationOrganization/FullName": "Полное наименование",
+    "Certificate/ActualEducationOrganization/HeadEduOrgId": "Головная организация",
+    "Certificate/ActualEducationOrganization/HeadName": "ФИО руководителя",
+    "Certificate/ActualEducationOrganization/HeadPost": "Должность руководителя",
+    "Certificate/ActualEducationOrganization/INN": "ИНН",
+    "Certificate/ActualEducationOrganization/Id": "Идентификатор образовательной организации",
+    "Certificate/ActualEducationOrganization/IsBranch": "Является филиалом (1 -да, 0 - нет)",
+    "Certificate/ActualEducationOrganization/KPP": "КПП",
+    "Certificate/ActualEducationOrganization/KindName": "Вид организации",
+    "Certificate/ActualEducationOrganization/OGRN": "ОГРН",
+    "Certificate/ActualEducationOrganization/Phone": "Телефон организации",
+    "Certificate/ActualEducationOrganization/PostAddress": "Юридический адрес организации",
+    "Certificate/ActualEducationOrganization/RegionName": "Субъект РФ",
+    "Certificate/ActualEducationOrganization/ShortName": "Сокращенное наименование",
+    "Certificate/ActualEducationOrganization/TypeName": "Тип орагнизации",
+    "Certificate/ActualEducationOrganization/WebSite": "Веб-сайт организации",
+    "Certificate/ControlOrgan": "Орган, выдавший свидетельство",
+    "Certificate/Decisions/Decision/DecisionDate": "Дата распорядительного документа",
+    "Certificate/Decisions/Decision/DecisionTypeName": "Тип документа распорядительного документа",
+    "Certificate/Decisions/Decision/Id": "Идентификатор документа",
+    "Certificate/Decisions/Decision/OrderDocumentKind": "Вид документа",
+    "Certificate/Decisions/Decision/OrderDocumentNumber": "Номер распорядительного документа",
+    "Certificate/EduOrgFullName": "Полное наименование организации",
+    "Certificate/EduOrgINN": "ИНН",
+    "Certificate/EduOrgKPP": "КПП",
+    "Certificate/EduOrgOGRN": "ОГРН",
+    "Certificate/EduOrgShortName": "Сокращенное наименование",
+    "Certificate/EndDate": "Срок действия свидетельства",
+    "Certificate/FederalDistrictName": "Субъект РФ",
+    "Certificate/FederalDistrictShortName": "Сокращенное наименование Субъекта РФ",
+    "Certificate/FormNumber": "Номер бланка",
+    "Certificate/Id": "Идентификатор свидетельства",
+    "Certificate/IndividualEntrepreneurAddress": "Юридический адрес индивидуального предпринимателя (при наличии)",
+    "Certificate/IndividualEntrepreneurEGRIP": "ОГРН индивидуального предпринимателя (при наличии)",
+    "Certificate/IndividualEntrepreneurFirstName": "Имя индивидуального предпринимателя (при наличии)",
+    "Certificate/IndividualEntrepreneurINN": "ИНН индивидуального предпринимателя (при наличии)",
+    "Certificate/IndividualEntrepreneurLastName": "Фамилия индивидуального предпринимателя (при наличии)",
+    "Certificate/IndividualEntrepreneurMiddleName": "Отчество индивидуального предпринимателя (при наличии)",
+    "Certificate/IsFederal": "Источник свидетельства (1 - федеральное, 0 - региональное)",
+    "Certificate/IssueDate": "Дата выдачи свидетельства",
+    "Certificate/PostAddress": "Юридический адрес организации",
+    "Certificate/RegNumber": "Регистрационный номер",
+    "Certificate/RegionCode": "Код Субъекта РФ",
+    "Certificate/RegionName": "Субъект РФ",
+    "Certificate/SerialNumber": "Серия бланка",
+    "Certificate/StatusName": "Текущий статус свидетельства",
+    "Certificate/Supplements/Supplement/ActualEducationOrganization/Email": "Адрес электронной почты организации",
+    "Certificate/Supplements/Supplement/ActualEducationOrganization/Fax": "(3452)  Факс",
+    "Certificate/Supplements/Supplement/ActualEducationOrganization/FederalDistrictName": "Полное наименование Федерального округа",
+    "Certificate/Supplements/Supplement/ActualEducationOrganization/FederalDistrictShortName": "Сокращенное наименование Федерального округа",
+    "Certificate/Supplements/Supplement/ActualEducationOrganization/FormName": "Организационно правовая форма",
+    "Certificate/Supplements/Supplement/ActualEducationOrganization/FullName": "Полное наименование",
+    "Certificate/Supplements/Supplement/ActualEducationOrganization/HeadEduOrgId": "Головная организация",
+    "Certificate/Supplements/Supplement/ActualEducationOrganization/HeadName": "ФИО руководителя",
+    "Certificate/Supplements/Supplement/ActualEducationOrganization/HeadPost": "Должность руководителя",
+    "Certificate/Supplements/Supplement/ActualEducationOrganization/INN": "ИНН",
+    "Certificate/Supplements/Supplement/ActualEducationOrganization/Id": "Идентификатор образовательной организации",
+    "Certificate/Supplements/Supplement/ActualEducationOrganization/IsBranch": "Является филиалом (1 -да, 0 - нет)",
+    "Certificate/Supplements/Supplement/ActualEducationOrganization/KPP": "КПП",
+    "Certificate/Supplements/Supplement/ActualEducationOrganization/KindName": "Вид организации",
+    "Certificate/Supplements/Supplement/ActualEducationOrganization/OGRN": "ОГРН",
+    "Certificate/Supplements/Supplement/ActualEducationOrganization/Phone": "Телефон организации",
+    "Certificate/Supplements/Supplement/ActualEducationOrganization/PostAddress": "Юридический адрес организации",
+    "Certificate/Supplements/Supplement/ActualEducationOrganization/RegionName": "Субъект РФ",
+    "Certificate/Supplements/Supplement/ActualEducationOrganization/ShortName": "Сокращенное наименование",
+    "Certificate/Supplements/Supplement/ActualEducationOrganization/TypeName": "Тип орагнизации",
+    "Certificate/Supplements/Supplement/ActualEducationOrganization/WebSite": "Веб-сайт организации",
+    "Certificate/Supplements/Supplement/EduOrgAddress": "Юридический адрес организации из приложения",
+    "Certificate/Supplements/Supplement/EduOrgFullName": "Полное наименование организации из приложения",
+    "Certificate/Supplements/Supplement/EduOrgKPP": "КПП организации из приложения",
+    "Certificate/Supplements/Supplement/EduOrgShortName": "Сокращенное наименование организации из приложения",
+    "Certificate/Supplements/Supplement/EducationalPrograms/EducationalProgram/EduLevelName": "Уровень ОП",
+    "Certificate/Supplements/Supplement/EducationalPrograms/EducationalProgram/EduNormativePeriod": "Нормативный период",
+    "Certificate/Supplements/Supplement/EducationalPrograms/EducationalProgram/Id": "Идентификатор программы",
+    "Certificate/Supplements/Supplement/EducationalPrograms/EducationalProgram/IsAccredited": "Аккредитована / отказ (аккредитована - 0, отказ - 1)",
+    "Certificate/Supplements/Supplement/EducationalPrograms/EducationalProgram/IsCanceled": "Лишение программы ОП",
+    "Certificate/Supplements/Supplement/EducationalPrograms/EducationalProgram/IsSuspended": "Приостановка ОП",
+    "Certificate/Supplements/Supplement/EducationalPrograms/EducationalProgram/ProgrammCode": "Код ОП",
+    "Certificate/Supplements/Supplement/EducationalPrograms/EducationalProgram/ProgrammName": "Наименование ОП",
+    "Certificate/Supplements/Supplement/EducationalPrograms/EducationalProgram/Qualification": "Наименование квалификации",
+    "Certificate/Supplements/Supplement/EducationalPrograms/EducationalProgram/TypeName": "Тип программы",
+    "Certificate/Supplements/Supplement/EducationalPrograms/EducationalProgram/UGSCode": "Код УГСН",
+    "Certificate/Supplements/Supplement/EducationalPrograms/EducationalProgram/UGSName": "Наименование УГСН",
+    "Certificate/Supplements/Supplement/FormNumber": "Номер бланка приложения",
+    "Certificate/Supplements/Supplement/Id": "Идентификатор приложения",
+    "Certificate/Supplements/Supplement/IsForBranch": "Выдано филиалу / головной организации (филиалу - 1, головной - 0)",
+    "Certificate/Supplements/Supplement/IssueDate": "Дата выдачи приложения",
+    "Certificate/Supplements/Supplement/Note": "Примечание",
+    "Certificate/Supplements/Supplement/Number": "Номер приложения",
+    "Certificate/Supplements/Supplement/SerialNumber": "Серия бланка приложения",
+    "Certificate/Supplements/Supplement/StatusCode": "Статус приложения",
+    "Certificate/Supplements/Supplement/StatusName": "Текущий статус приложения",
+    "Certificate/TypeName": "Вид свидетельства"
+  },
+  "tags_with_multiple_paths": {
+    "EduOrgFullName": [
+      "Certificate/EduOrgFullName",
+      "Certificate/Supplements/Supplement/EduOrgFullName"
+    ],
+    "EduOrgKPP": [
+      "Certificate/EduOrgKPP",
+      "Certificate/Supplements/Supplement/EduOrgKPP"
+    ],
+    "EduOrgShortName": [
+      "Certificate/EduOrgShortName",
+      "Certificate/Supplements/Supplement/EduOrgShortName"
+    ],
+    "Email": [
+      "Certificate/ActualEducationOrganization/Email",
+      "Certificate/Supplements/Supplement/ActualEducationOrganization/Email"
+    ],
+    "Fax": [
+      "Certificate/ActualEducationOrganization/Fax",
+      "Certificate/Supplements/Supplement/ActualEducationOrganization/Fax"
+    ],
+    "FederalDistrictName": [
+      "Certificate/ActualEducationOrganization/FederalDistrictName",
+      "Certificate/FederalDistrictName",
+      "Certificate/Supplements/Supplement/ActualEducationOrganization/FederalDistrictName"
+    ],
+    "FederalDistrictShortName": [
+      "Certificate/ActualEducationOrganization/FederalDistrictShortName",
+      "Certificate/FederalDistrictShortName",
+      "Certificate/Supplements/Supplement/ActualEducationOrganization/FederalDistrictShortName"
+    ],
+    "FormName": [
+      "Certificate/ActualEducationOrganization/FormName",
+      "Certificate/Supplements/Supplement/ActualEducationOrganization/FormName"
+    ],
+    "FormNumber": [
+      "Certificate/FormNumber",
+      "Certificate/Supplements/Supplement/FormNumber"
+    ],
+    "FullName": [
+      "Certificate/ActualEducationOrganization/FullName",
+      "Certificate/Supplements/Supplement/ActualEducationOrganization/FullName"
+    ],
+    "HeadEduOrgId": [
+      "Certificate/ActualEducationOrganization/HeadEduOrgId",
+      "Certificate/Supplements/Supplement/ActualEducationOrganization/HeadEduOrgId"
+    ],
+    "HeadName": [
+      "Certificate/ActualEducationOrganization/HeadName",
+      "Certificate/Supplements/Supplement/ActualEducationOrganization/HeadName"
+    ],
+    "HeadPost": [
+      "Certificate/ActualEducationOrganization/HeadPost",
+      "Certificate/Supplements/Supplement/ActualEducationOrganization/HeadPost"
+    ],
+    "INN": [
+      "Certificate/ActualEducationOrganization/INN",
+      "Certificate/Supplements/Supplement/ActualEducationOrganization/INN"
+    ],
+    "Id": [
+      "Certificate/ActualEducationOrganization/Id",
+      "Certificate/Decisions/Decision/Id",
+      "Certificate/Id",
+      "Certificate/Supplements/Supplement/ActualEducationOrganization/Id",
+      "Certificate/Supplements/Supplement/EducationalPrograms/EducationalProgram/Id",
+      "Certificate/Supplements/Supplement/Id"
+    ],
+    "IsBranch": [
+      "Certificate/ActualEducationOrganization/IsBranch",
+      "Certificate/Supplements/Supplement/ActualEducationOrganization/IsBranch"
+    ],
+    "IssueDate": [
+      "Certificate/IssueDate",
+      "Certificate/Supplements/Supplement/IssueDate"
+    ],
+    "KPP": [
+      "Certificate/ActualEducationOrganization/KPP",
+      "Certificate/Supplements/Supplement/ActualEducationOrganization/KPP"
+    ],
+    "KindName": [
+      "Certificate/ActualEducationOrganization/KindName",
+      "Certificate/Supplements/Supplement/ActualEducationOrganization/KindName"
+    ],
+    "OGRN": [
+      "Certificate/ActualEducationOrganization/OGRN",
+      "Certificate/Supplements/Supplement/ActualEducationOrganization/OGRN"
+    ],
+    "Phone": [
+      "Certificate/ActualEducationOrganization/Phone",
+      "Certificate/Supplements/Supplement/ActualEducationOrganization/Phone"
+    ],
+    "PostAddress": [
+      "Certificate/ActualEducationOrganization/PostAddress",
+      "Certificate/PostAddress",
+      "Certificate/Supplements/Supplement/ActualEducationOrganization/PostAddress"
+    ],
+    "RegionName": [
+      "Certificate/ActualEducationOrganization/RegionName",
+      "Certificate/RegionName",
+      "Certificate/Supplements/Supplement/ActualEducationOrganization/RegionName"
+    ],
+    "SerialNumber": [
+      "Certificate/SerialNumber",
+      "Certificate/Supplements/Supplement/SerialNumber"
+    ],
+    "ShortName": [
+      "Certificate/ActualEducationOrganization/ShortName",
+      "Certificate/Supplements/Supplement/ActualEducationOrganization/ShortName"
+    ],
+    "StatusName": [
+      "Certificate/StatusName",
+      "Certificate/Supplements/Supplement/StatusName"
+    ],
+    "TypeName": [
+      "Certificate/ActualEducationOrganization/TypeName",
+      "Certificate/Supplements/Supplement/ActualEducationOrganization/TypeName",
+      "Certificate/Supplements/Supplement/EducationalPrograms/EducationalProgram/TypeName",
+      "Certificate/TypeName"
+    ],
+    "WebSite": [
+      "Certificate/ActualEducationOrganization/WebSite",
+      "Certificate/Supplements/Supplement/ActualEducationOrganization/WebSite"
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenData>
+  <Certificates>
+    <Certificate>
+      <Id>ss-1</Id>
+      <IsFederal>1</IsFederal>
+      <Supplements>
+        <Supplement>
+          <Id>only-one</Id>
+          <IssueDate>2021-06-01</IssueDate>
+        </Supplement>
+      </Supplements>
+    </Certificate>
+  </Certificates>
+</OpenData>

@@ -1,0 +1,3 @@
+https://isga.obrnadzor.gov.ru/api/spa/accredreestr/opendata/file/data-20260403-structure-20160713.xml
+https://isga.obrnadzor.gov.ru/api/spa/accredreestr/opendata/file/data-20260206-structure-20160713.xml
+https://isga.obrnadzor.gov.ru/api/spa/accredreestr/opendata/file/data-20260205-structure-20160713.xml

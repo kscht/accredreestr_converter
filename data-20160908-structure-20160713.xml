@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenData>
+	<Certificates>
+		<Certificate>
+			<IsFederal>Источник свидетельства (1 - федеральное, 0 - региональное)</IsFederal>
+			<Id>Идентификатор свидетельства</Id>
+			<StatusName>Текущий статус свидетельства </StatusName>
+			<TypeName>Вид свидетельства</TypeName>
+			<RegionName>Субъект РФ</RegionName>
+			<RegionCode>Код Субъекта РФ</RegionCode>
+			<FederalDistrictName>Субъект РФ</FederalDistrictName>
+			<FederalDistrictShortName>Сокращенное наименование Субъекта РФ</FederalDistrictShortName>			
+			<RegNumber>Регистрационный номер</RegNumber>
+			<SerialNumber>Серия бланка</SerialNumber>
+			<FormNumber>Номер бланка</FormNumber>
+			<IssueDate>Дата выдачи свидетельства</IssueDate>
+			<EndDate>Срок действия свидетельства</EndDate>
+			<ControlOrgan>Орган, выдавший свидетельство</ControlOrgan>
+			<PostAddress>Юридический адрес организации</PostAddress>
+			<EduOrgFullName>Полное наименование организации</EduOrgFullName>
+			<EduOrgShortName>Сокращенное наименование</EduOrgShortName>
+			<EduOrgINN>ИНН</EduOrgINN>
+			<EduOrgKPP>КПП</EduOrgKPP>
+			<EduOrgOGRN>ОГРН</EduOrgOGRN>
+			<IndividualEntrepreneurLastName>Фамилия индивидуального предпринимателя (при наличии)</IndividualEntrepreneurLastName>
+			<IndividualEntrepreneurFirstName>Имя индивидуального предпринимателя (при наличии)</IndividualEntrepreneurFirstName>
+			<IndividualEntrepreneurMiddleName>Отчество индивидуального предпринимателя (при наличии)</IndividualEntrepreneurMiddleName>
+			<IndividualEntrepreneurAddress>Юридический адрес индивидуального предпринимателя (при наличии)</IndividualEntrepreneurAddress>
+			<IndividualEntrepreneurEGRIP>ОГРН индивидуального предпринимателя (при наличии)</IndividualEntrepreneurEGRIP>
+			<IndividualEntrepreneurINN>ИНН индивидуального предпринимателя (при наличии)</IndividualEntrepreneurINN>
+			<ActualEducationOrganization>
+				<Id>Идентификатор образовательной организации</Id>			
+				<FullName>Полное наименование</FullName>
+				<ShortName>Сокращенное наименование</ShortName>
+				<HeadEduOrgId>Головная организация</HeadEduOrgId>
+				<IsBranch>Является филиалом (1 -да, 0 - нет)</IsBranch>
+				<PostAddress>Юридический адрес организации</PostAddress>
+				<Phone>Телефон организации</Phone>
+				<Fax>(3452)  Факс </Fax>
+				<Email>Адрес электронной почты организации</Email>
+				<WebSite>Веб-сайт организации</WebSite>
+				<OGRN>ОГРН</OGRN>
+				<INN>ИНН</INN>
+				<KPP>КПП</KPP>
+				<HeadPost>Должность руководителя</HeadPost>	
+				<HeadName>ФИО руководителя</HeadName>
+				<FormName>Организационно правовая форма</FormName>	
+				<KindName>Вид организации</KindName>
+				<TypeName>Тип орагнизации</TypeName>
+				<RegionName>Субъект РФ</RegionName>
+				<FederalDistrictShortName>Сокращенное наименование Федерального округа</FederalDistrictShortName>
+				<FederalDistrictName>Полное наименование Федерального округа</FederalDistrictName>
+			</ActualEducationOrganization>
+			<Supplements>
+				<Supplement>
+					<Id>Идентификатор приложения</Id>
+					<StatusName>Текущий статус приложения</StatusName>
+					<StatusCode>Статус приложения</StatusCode>
+					<Number>Номер приложения</Number>
+					<SerialNumber>Серия бланка приложения</SerialNumber>
+					<FormNumber>Номер бланка приложения</FormNumber>
+					<IssueDate>Дата выдачи приложения</IssueDate>
+					<IsForBranch>Выдано филиалу / головной организации (филиалу - 1, головной - 0)</IsForBranch>
+					<Note>Примечание</Note>
+					<EduOrgFullName>Полное наименование организации из приложения</EduOrgFullName>
+					<EduOrgShortName>Сокращенное наименование организации из приложения</EduOrgShortName>
+					<EduOrgAddress>Юридический адрес организации из приложения</EduOrgAddress>
+					<EduOrgKPP>КПП организации из приложения</EduOrgKPP>
+					<ActualEducationOrganization>
+						<Id>Идентификатор образовательной организации</Id>
+						<FullName>Полное наименование</FullName>
+						<ShortName>Сокращенное наименование</ShortName>
+						<HeadEduOrgId>Головная организация</HeadEduOrgId>
+						<IsBranch>Является филиалом (1 -да, 0 - нет)</IsBranch>
+						<PostAddress>Юридический адрес организации</PostAddress>
+						<Phone>Телефон организации</Phone>
+						<Fax>(3452)  Факс </Fax>
+						<Email>Адрес электронной почты организации</Email>
+						<WebSite>Веб-сайт организации</WebSite>
+						<OGRN>ОГРН</OGRN>
+						<INN>ИНН</INN>
+						<KPP>КПП</KPP>
+						<HeadPost>Должность руководителя</HeadPost>
+						<HeadName>ФИО руководителя</HeadName>
+						<FormName>Организационно правовая форма</FormName>
+						<KindName>Вид организации</KindName>
+						<TypeName>Тип орагнизации</TypeName>
+						<RegionName>Субъект РФ</RegionName>
+						<FederalDistrictShortName>Сокращенное наименование Федерального округа</FederalDistrictShortName>
+						<FederalDistrictName>Полное наименование Федерального округа</FederalDistrictName>						
+					</ActualEducationOrganization>
+					<EducationalPrograms>
+						<EducationalProgram>
+							<Id>Идентификатор программы</Id>
+							<TypeName>Тип программы</TypeName>
+							<EduLevelName>Уровень ОП</EduLevelName>				
+							<ProgrammName>Наименование ОП</ProgrammName>
+							<ProgrammCode>Код ОП</ProgrammCode>
+						    <UGSName>Наименование УГСН</UGSName>
+							<UGSCode>Код УГСН</UGSCode>
+							<EduNormativePeriod>Нормативный период</EduNormativePeriod>
+							<Qualification>Наименование квалификации</Qualification>
+							<IsAccredited>Аккредитована / отказ (аккредитована - 0, отказ - 1)</IsAccredited>
+							<IsCanceled>Лишение программы ОП</IsCanceled>
+							<IsSuspended>Приостановка ОП</IsSuspended>
+						</EducationalProgram>
+					</EducationalPrograms>
+				</Supplement>
+			</Supplements>
+			<Decisions>
+				<Decision>
+					<Id>Идентификатор документа</Id>
+					<DecisionTypeName>Тип документа распорядительного документа</DecisionTypeName>
+					<OrderDocumentNumber>Номер распорядительного документа</OrderDocumentNumber>
+					<OrderDocumentKind>Вид документа</OrderDocumentKind>
+					<DecisionDate>Дата распорядительного документа</DecisionDate>								
+				</Decision>
+			</Decisions>
+		</Certificate>
+	</Certificates>
+</OpenData>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenData>
+  <Certificates>
+    <Certificate>
+      <Id>ms-1</Id>
+      <IsFederal>0</IsFederal>
+      <Supplements>
+        <Supplement>
+          <Id>s1</Id>
+          <IsForBranch>0</IsForBranch>
+        </Supplement>
+        <Supplement>
+          <Id>s2</Id>
+          <IsForBranch>1</IsForBranch>
+        </Supplement>
+      </Supplements>
+    </Certificate>
+  </Certificates>
+</OpenData>

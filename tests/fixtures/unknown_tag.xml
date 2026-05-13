@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenData>
+  <Certificates>
+    <Certificate>
+      <Id>ut-1</Id>
+      <IsFederal>1</IsFederal>
+      <TotallyUnknownField>значение</TotallyUnknownField>
+    </Certificate>
+    <Certificate>
+      <Id>ut-2</Id>
+      <IsFederal>0</IsFederal>
+      <TotallyUnknownField>ещё</TotallyUnknownField>
+    </Certificate>
+  </Certificates>
+</OpenData>

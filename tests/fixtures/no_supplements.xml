@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenData>
+  <Certificates>
+    <Certificate>
+      <Id>ns-1</Id>
+      <IsFederal>1</IsFederal>
+    </Certificate>
+  </Certificates>
+</OpenData>

@@ -1,0 +1,9 @@
+data/*.xml
+out/
+.pytest_cache/
+__pycache__/
+.venv/
+venv/
+*.pyc
+.pytest_cache/
+.mypy_cache/

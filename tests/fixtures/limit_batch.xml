@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenData>
+  <Certificates>
+    <Certificate><Id>l1</Id><IsFederal>1</IsFederal></Certificate>
+    <Certificate><Id>l2</Id><IsFederal>0</IsFederal></Certificate>
+    <Certificate><Id>l3</Id><IsFederal>1</IsFederal></Certificate>
+    <Certificate><Id>l4</Id><IsFederal>0</IsFederal></Certificate>
+    <Certificate><Id>l5</Id><IsFederal>1</IsFederal></Certificate>
+  </Certificates>
+</OpenData>
