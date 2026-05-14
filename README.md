@@ -36,7 +36,7 @@ python convert.py data/data-*-structure-*.xml \
 
 - **`specs/`** — машиночитаемые артефакты: маппинги KG/SQL/Prisma, JSON Schema, эталонный XML структуры, `field_labels.json`.
 - **`tools/`** — скрипты перегенерации (`generate_*`) из `specs/` и констант `convert.py`.
-- **Корень** — основной CLI (`convert.py`, `download.py`, `scrape_opendata.py`), пакеты `sql_convert/` и `parquet_convert/`.
+- **Корень** — основной CLI (`convert.py`, `download.py`, `scrape_opendata.py`), пакеты `sql_convert/`, `parquet_convert/`, `cypher_convert/`.
 
 | Путь | Назначение |
 |------|------------|
@@ -51,7 +51,9 @@ python convert.py data/data-*-structure-*.xml \
 | `specs/json-schema/certificate-line.schema.json` | JSON Schema (2020-12) для одной строки JSONL |
 | `tools/generate_json_schema.py` | Перегенерация JSON Schema |
 | `tools/sample_jsonl_lines.py` | Случайная подвыборка N строк из большого JSONL (резервуар, один проход) |
-| `docs/knowledge_graph.md` | Пояснения к KG: RDF, property graph, ограничения |
+| `tools/generate_test_jsonl_samples.py` | Набор выборок 10/50/100/500/5000 строк → `examples/jsonl_samples/sample_*.jsonl` |
+| `docs/cypher_export.md` | JSONL → Cypher (Neo4j) по KG-mapping |
+| `cypher_convert/export_cypher.py` | Экспорт `.cypher`: `python -m cypher_convert.export_cypher …` |
 | `docs/sql_convert.md` | Пояснения к SQL: ключи, вложенность, типы |
 | `docs/parquet_duckdb.md` | JSONL → DuckDB и Parquet |
 | `docs/prisma.md` | Prisma: генерация schema, Datasource, ограничения |
@@ -191,6 +193,11 @@ python -m parquet_convert.import_duckdb out/data.jsonl --parquet-dir out/parquet
 - [`specs/kg/mapping.json`](specs/kg/mapping.json);
 - [`docs/knowledge_graph.md`](docs/knowledge_graph.md).
 
+Для **Neo4j (Cypher)** по тому же KG-mapping:
+
+- [`docs/cypher_export.md`](docs/cypher_export.md);
+- **`python -m cypher_convert.export_cypher`** — JSONL → файл `.cypher`.
+
 Для **реляционной** загрузки (PostgreSQL и аналоги):
 
 - [`specs/sql/mapping.json`](specs/sql/mapping.json);
@@ -212,7 +219,7 @@ python -m parquet_convert.import_duckdb out/data.jsonl --parquet-dir out/parquet
 - [`docs/json_schema.md`](docs/json_schema.md);
 - перегенерация: **`python tools/generate_json_schema.py`**.
 
-Карты KG/SQL/Prisma и схема JSON описывают одну модель данных; при изменении конвертера обновляйте их согласованно. Импорт в DuckDB/Parquet использует тот же SQL-mapping.
+Карты KG/SQL/Prisma, экспорт Cypher и схема JSON описывают одну модель данных; при изменении конвертера обновляйте их согласованно. Импорт в DuckDB/Parquet использует тот же SQL-mapping.
 
 ## Работа с результатом
 
@@ -244,4 +251,10 @@ pytest
 
 ```bash
 ACCRED_SQL_LIVE_SAMPLE=1 pytest tests/test_import_sql_live_sample.py -q
+```
+
+Экспорт **Parquet** по той же подвыборке (in-memory DuckDB, первые **100** непустых строк файла — см. `tests/test_import_parquet_live_sample.py`):
+
+```bash
+ACCRED_PARQUET_LIVE_SAMPLE=1 pytest tests/test_import_parquet_live_sample.py -q
 ```

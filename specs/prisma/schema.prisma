@@ -107,7 +107,7 @@ model EducationalProgram {
   @@map("educational_programs")
 }
 
-/// Вложенный объект ActualEducationOrganization: либо на корне сертификата, либо внутри элемента Supplements. Различие по ae_scope и nullable supplement_id.
+/// Вложенный объект ActualEducationOrganization: либо на корне сертификата, либо внутри элемента Supplements. Различие по ae_scope и nullable supplement_id. Если aeo_id на корне (ae_scope=certificate) и aeo_id во вложенной строке (ae_scope=supplement) для одной строки JSONL различаются, в типичном случае это означает филиал: приложение привязано к отдельной ОО (часто филиалу), карточка на корне — к головной/основной организации; дополнительно см. поле is_branch.
 model ActualEducationOrganization {
   source_file String @db.Text
   certificate_id String @db.Text

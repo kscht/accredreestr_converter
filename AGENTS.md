@@ -35,7 +35,11 @@
 | `specs/json-schema/certificate-line.schema.json` | JSON Schema (2020-12) для одной строки JSONL |
 | `tools/generate_json_schema.py` | Перегенерация JSON Schema |
 | `tools/sample_jsonl_lines.py` | Подвыборка N строк из большого JSONL (резервуар, один проход); пример: `out/sample_live_5000.jsonl` |
-| `docs/knowledge_graph.md` | Пояснения к KG |
+| `tools/generate_test_jsonl_samples.py` | Набор случайных JSONL 10/50/100/500/5000 строк в `examples/jsonl_samples/` |
+| `tools/analyze_aeo_cert_vs_supplement.py` | Сводка AEO корень vs приложения; детерминированные `sample_*.jsonl` (первые N расхождений по файлу) в `examples/jsonl_samples_aeo_mismatch/`; `--no-samples` только stdout |
+| `docs/cypher_export.md` | JSONL → Cypher (Neo4j) по `specs/kg/mapping.json` |
+| `examples/accred_graph_preview.cypher` | Мини-пример графа (1 сертификат) для Neo4j Browser |
+| `cypher_convert/export_cypher.py` | CLI: `python -m cypher_convert.export_cypher …` |
 | `docs/sql_convert.md` | Пояснения к SQL-импорту |
 | `docs/parquet_duckdb.md` | JSONL → DuckDB и экспорт Parquet |
 | `docs/prisma.md` | Prisma: генерация, Datasource, ограничения |
@@ -48,13 +52,14 @@
 | `tests/test_convert.py` | Основные тесты |
 | `tests/test_json_schema.py` | JSON Schema vs фикстуры |
 | `tests/test_field_labels.py` | Генерация подписей |
-| `tests/test_kg_mapping.py` | Структура `specs/kg/mapping.json` |
+| `tests/test_export_cypher.py` | Экспорт Cypher по KG-mapping |
 | `tests/test_sql_mapping.py` | Структура `specs/sql/mapping.json` |
 | `tests/test_prisma_schema.py` | `specs/prisma/mapping.json`, генерация schema |
 | `tests/test_schema_compat.py` | Константы ⊆ схема XML |
 | `tests/test_scrape_opendata.py` | Парсер HTML perechen |
 | `tests/test_import_sql.py` | Импорт JSONL в SQLite / PostgreSQL / MySQL (опц. интеграция по DSN) |
 | `tests/test_import_sql_live_sample.py` | Опционально: импорт `out/sample_live_5000.jsonl` при **`ACCRED_SQL_LIVE_SAMPLE=1`** |
+| `tests/test_import_parquet_live_sample.py` | Опционально: Parquet с той же выборкой при **`ACCRED_PARQUET_LIVE_SAMPLE=1`** |
 | `tests/test_import_duckdb.py` | Импорт JSONL в DuckDB и Parquet (нужен пакет `duckdb`) |
 
 ## CLI `convert.py`
@@ -93,6 +98,7 @@
 pytest
 # опционально: RUN_SLOW=1 pytest -k streaming
 # опционально: ACCRED_SQL_LIVE_SAMPLE=1 pytest tests/test_import_sql_live_sample.py -q
+# опционально: ACCRED_PARQUET_LIVE_SAMPLE=1 pytest tests/test_import_parquet_live_sample.py -q
 ```
 
 ## Каталоги и gitignore

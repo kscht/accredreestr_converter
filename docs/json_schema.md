@@ -37,6 +37,7 @@ python -c "import json; o=json.load(open('/tmp/one.json')); json.dump(o, open('/
 - Схема **не** описывает порядок ключей и **не** дублирует бизнес-правила (уникальность Id между сущностями и т.д.) — только типичная форма JSON.
 - У элементов **`Decisions[]`** поле **`Id`** может быть `null` (пустой тег в XML). JSON Schema это **разрешает**; отдельное правило «в реляционный импорт такая позиция не попадает в таблицу `decisions`» см. в [`sql_convert.md`](sql_convert.md) — на валидность строки JSONL по этой схеме оно не влияет.
 - Поле **`program_slot`** есть **только** в реляционной проекции ([`specs/sql/mapping.json`](../specs/sql/mapping.json), Prisma, DuckDB): в JSONL его нет, при импорте выводится из порядка элементов в `Supplements[].EducationalPrograms[]`.
+- Разные **`Id`** у **`ActualEducationOrganization`** на корне объекта и внутри **`Supplements[]`** в одной строке JSONL в типичном случае означают **филиал** (отдельная ОО в приложении); подробнее в [`sql_convert.md`](sql_convert.md).
 
 ## Связь с KG и SQL
 

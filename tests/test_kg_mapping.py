@@ -16,6 +16,8 @@ def test_kg_mapping_json_loads() -> None:
         "Supplement",
         "Decision",
         "EducationalProgram",
+        "EducationalLevel",
+        "Region",
         "ActualEducationOrganization",
     }
     preds = {e["predicate"] for e in data["edge_kinds"]}

@@ -40,6 +40,26 @@ python tools/sample_jsonl_lines.py out/data-20260403-structure-20160713.jsonl \
 
 Резервуарный алгоритм: один проход по файлу, память O(N). **`--seed`** фиксирует состав строк при тех же входе и N.
 
+Набор фиксированных случайных выборок **10 / 50 / 100 / 500 / 5000** строк (разные seed для каждого размера) в **`examples/jsonl_samples/`**:
+
+```bash
+python tools/generate_test_jsonl_samples.py
+# или явно:
+python tools/generate_test_jsonl_samples.py out/data-20260403-structure-20160713.jsonl -o examples/jsonl_samples
+```
+
+Опции: **`--sizes`**, **`--seed-base`**. Одна строка — один объект сертификата, как в полном JSONL.
+
+## Опциональный тест на живой подвыборке
+
+При наличии **`out/sample_live_5000.jsonl`** (см. команды выше):
+
+```bash
+ACCRED_PARQUET_LIVE_SAMPLE=1 pytest tests/test_import_parquet_live_sample.py -q
+```
+
+Тест грузит **первые 100** непустых строк `out/sample_live_5000.jsonl` в in-memory DuckDB (счётчик как у CLI `--limit`), пишет **`.parquet`** по каждой таблице из `specs/sql/mapping.json` во временный каталог и проверяет **100** строк в `certificates.parquet`. Полный прогон 5000+ строк в Parquet оставьте для ручного CLI — в pytest это слишком долго. В CI по умолчанию не запускается (нет файла в `out/` и переменная не задана).
+
 ## Связь с Knowledge Graph и Prisma
 
 Та же декомпозиция сущностей, что в [`knowledge_graph.md`](knowledge_graph.md): граф, SQL/Prisma и DuckDB/Parquet — разные представления одной логики строки JSONL.

@@ -24,7 +24,6 @@
             "IsFederal",
             "StatusName",
             "TypeName",
-            "RegionName",
             "RegionCode",
             "FederalDistrictName",
             "FederalDistrictShortName",
@@ -35,7 +34,8 @@
             "EndDate",
             "ControlOrgan",
             "PostAddress"
-          ]
+          ],
+          "note_ru": "RegionName вынесен в узел Region (см. node_kinds Region, ребро inRegion); в JSON ключ остаётся."
         },
         {
           "group": "edu_org_flat_on_certificate",
@@ -119,7 +119,6 @@
           "group": "program_core",
           "json_keys": [
             "TypeName",
-            "EduLevelName",
             "ProgrammName",
             "ProgrammCode",
             "UGSName",
@@ -129,13 +128,40 @@
             "IsAccredited",
             "IsCanceled",
             "IsSuspended"
-          ]
+          ],
+          "note_ru": "EduLevelName вынесен в узел EducationalLevel (см. node_kinds EducationalLevel и рёбра hasEducationLevel / offersEducationLevel); в JSON ключ остаётся."
+        }
+      ]
+    },
+    {
+      "kind": "EducationalLevel",
+      "description_ru": "Уровень образования (уникальный текст EduLevelName). Глобальный URI: urn:accred:v1:EducationalLevel:<64 hex SHA-256 от UTF-8 строки имени после trim>. На узле свойство name — тот же текст.",
+      "id_template": "urn:accred:v1:EducationalLevel:{sha256_utf8_EduLevelName}",
+      "id_fields": ["EduLevelName"],
+      "scalar_property_groups": [
+        {
+          "group": "level_display",
+          "description_ru": "Импортёры задают name из EduLevelName.",
+          "json_keys": []
+        }
+      ]
+    },
+    {
+      "kind": "Region",
+      "description_ru": "Регион (текст RegionName с сертификата или с карточки ОО). URI: urn:accred:v1:Region:<64 hex SHA-256 от UTF-8 строки после trim>. Свойство name — исходная строка.",
+      "id_template": "urn:accred:v1:Region:{sha256_utf8_RegionName}",
+      "id_fields": ["RegionName"],
+      "scalar_property_groups": [
+        {
+          "group": "region_display",
+          "description_ru": "Импортёры задают name из RegionName.",
+          "json_keys": []
         }
       ]
     },
     {
       "kind": "ActualEducationOrganization",
-      "description_ru": "Карточка образовательной организации (вложенный объект, не массив)",
+      "description_ru": "Карточка образовательной организации (вложенный объект). Идентификатор узла в графе — по шаблону AEO (не по ОГРН); свойство OGRN и др. остаётся на узле для связей и сверки по реестру. Узлы с разными AEO.Id в scope certificate и supplement в одной строке JSONL типично соответствуют головной организации и филиалу (отдельная ОО в приложении).",
       "id_template": "urn:accred:v1:AEO:{_source_file_basename}:{certificate_Id}:{scope}:{AEO.Id}",
       "id_fields": ["_source_file", "Id", "scope", "ActualEducationOrganization.Id"],
       "scope_values": [
@@ -171,10 +197,10 @@
             "FormName",
             "KindName",
             "TypeName",
-            "RegionName",
             "FederalDistrictShortName",
             "FederalDistrictName"
-          ]
+          ],
+          "note_ru": "RegionName вынесен в узел Region (ребро inRegion); в JSON ключ остаётся. OGRN/INN и др. остаются на узле ОО."
         }
       ]
     }
@@ -205,6 +231,38 @@
       "via_json": "EducationalPrograms[]"
     },
     {
+      "predicate": "hasEducationLevel",
+      "predicate_ru": "уровень образования программы",
+      "from": "EducationalProgram",
+      "to": "EducationalLevel",
+      "cardinality": "N:1",
+      "via_json": "EducationalPrograms[].EduLevelName (узел по нормализованному тексту)"
+    },
+    {
+      "predicate": "offersEducationLevel",
+      "predicate_ru": "ОО связана с уровнями образования программ в своём контексте (приложение или вся строка JSONL для AEO сертификата)",
+      "from": "ActualEducationOrganization",
+      "to": "EducationalLevel",
+      "cardinality": "N:M",
+      "via_json": "логически из EducationalPrograms[].EduLevelName"
+    },
+    {
+      "predicate": "inRegion",
+      "predicate_ru": "регион по полю RegionName (корень сертификата)",
+      "from": "Certificate",
+      "to": "Region",
+      "cardinality": "N:1",
+      "via_json": "RegionName на корне объекта Certificate"
+    },
+    {
+      "predicate": "inRegion",
+      "predicate_ru": "регион по полю RegionName (карточка ОО)",
+      "from": "ActualEducationOrganization",
+      "to": "Region",
+      "cardinality": "N:1",
+      "via_json": "RegionName в ActualEducationOrganization"
+    },
+    {
       "predicate": "hasActualEducationOrganization",
       "predicate_ru": "ссылается на карточку ОО (как в выгрузке)",
       "from": "Certificate",
@@ -233,6 +291,7 @@
     "specs/field_labels.json",
     "specs/xml/data-20160908-structure-20160713.xml",
     "docs/knowledge_graph.md",
-    "docs/sql_convert.md"
+    "docs/sql_convert.md",
+    "docs/cypher_export.md"
   ]
 }

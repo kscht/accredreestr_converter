@@ -137,6 +137,11 @@ def build_schema_dict() -> dict[str, Any]:
 
     props["ActualEducationOrganization"] = {
         "type": ["object", "null"],
+        "description": (
+            "Карточка ОО на корне сертификата. Если Id здесь и у ActualEducationOrganization в "
+            "Supplements[] не совпадают, приложение обычно относится к филиалу (отдельная ОО); "
+            "см. описание корня схемы и docs/sql_convert.md."
+        ),
         "additionalProperties": True,
         "properties": _object_props(AEO_JSON_KEYS),
     }
@@ -162,6 +167,11 @@ def build_schema_dict() -> dict[str, Any]:
     }
     supplement_props["ActualEducationOrganization"] = {
         "type": ["object", "null"],
+        "description": (
+            "Карточка ОО в контексте данного приложения. Если Id здесь не совпадает с Id "
+            "ActualEducationOrganization на корне сертификата, в типичном случае речь о филиале "
+            "(отдельная ОО для этого приложения); см. описание корня схемы и docs/sql_convert.md."
+        ),
         "additionalProperties": True,
         "properties": _object_props(AEO_JSON_KEYS),
     }
@@ -184,7 +194,10 @@ def build_schema_dict() -> dict[str, Any]:
             "массивы Supplements/Decisions, опциональный ActualEducationOrganization. "
             "Неизвестные теги из XML могут появиться как дополнительные ключи. "
             "Пустой Id у элемента Decisions означает отсутствие идентификатора документа в выгрузке, "
-            "не «отсутствие организации»; см. docs/sql_convert.md."
+            "не «отсутствие организации»; см. docs/sql_convert.md. "
+            "Если Id у ActualEducationOrganization на корне и у ActualEducationOrganization внутри "
+            "Supplements[] различаются, в смысле реестра это обычно означает филиал (отдельная ОО в "
+            "приложении против головной на корне); см. docs/sql_convert.md."
         ),
         "type": "object",
         "required": ["_source_file"],

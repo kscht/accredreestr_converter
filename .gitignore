@@ -6,3 +6,7 @@ __pycache__/
 venv/
 *.pyc
 .mypy_cache/
+
+# Локально сгенерированные выборки из полного JSONL (десятки/сотни МБ)
+examples/jsonl_samples/
+examples/jsonl_samples_aeo_mismatch/
