@@ -56,7 +56,8 @@ def _emit_entity(table: dict[str, Any]) -> list[str]:
             tags.append("PK")
         if cname in fk_cols:
             tags.append("FK")
-        suffix = (" " + " ".join(tags)) if tags else ""
+        # GitHub Mermaid: несколько модификаторов только через запятую (не «PK FK»).
+        suffix = (" " + ", ".join(tags)) if tags else ""
         lines.append(f"    {mt} {cname}{suffix}")
 
     lines.append("  }")

@@ -47,8 +47,8 @@ erDiagram
   }
 
   supplements {
-    text source_file PK FK
-    text certificate_id PK FK
+    text source_file PK, FK
+    text certificate_id PK, FK
     text supplement_id PK
     text status_name
     text status_code
@@ -65,8 +65,8 @@ erDiagram
   }
 
   decisions {
-    text source_file PK FK
-    text certificate_id PK FK
+    text source_file PK, FK
+    text certificate_id PK, FK
     text decision_id PK
     text decision_type_name
     text order_document_number
@@ -75,9 +75,9 @@ erDiagram
   }
 
   educational_programs {
-    text source_file PK FK
-    text certificate_id PK FK
-    text supplement_id PK FK
+    text source_file PK, FK
+    text certificate_id PK, FK
+    text supplement_id PK, FK
     int program_slot PK
     text program_id
     text type_name
@@ -94,10 +94,10 @@ erDiagram
   }
 
   actual_education_organizations {
-    text source_file PK FK
-    text certificate_id PK FK
+    text source_file PK, FK
+    text certificate_id PK, FK
     text ae_scope PK
-    text supplement_id PK FK
+    text supplement_id PK, FK
     text aeo_id PK
     text full_name
     text short_name
