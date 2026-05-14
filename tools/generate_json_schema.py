@@ -1,4 +1,4 @@
-"""Генерирует JSON Schema (draft 2020-12) для одной строки JSONL (объект сертификата + _source_file)."""
+"""Генерирует JSON Schema (draft 2020-12) для одной строки JSONL (объект сертификата)."""
 
 from __future__ import annotations
 
@@ -126,12 +126,7 @@ def _object_props(keys: tuple[str, ...]) -> dict[str, Any]:
 
 
 def build_schema_dict() -> dict[str, Any]:
-    props: dict[str, Any] = {
-        "_source_file": {
-            "type": "string",
-            "description": "Имя исходного XML (добавляет convert.py).",
-        },
-    }
+    props: dict[str, Any] = {}
     for tag in ROOT_SCALAR_TAGS:
         props[tag] = _scalar_schema(tag)
 
@@ -200,7 +195,7 @@ def build_schema_dict() -> dict[str, Any]:
             "приложении против головной на корне); см. docs/sql_convert.md."
         ),
         "type": "object",
-        "required": ["_source_file"],
+        "required": ["Id"],
         "additionalProperties": True,
         "properties": props,
         "$defs": {

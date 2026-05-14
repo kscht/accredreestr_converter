@@ -100,9 +100,7 @@ def _row_supplement(
         n = c["name"]
         fj = c.get("from_json")
         st = c["sql_type"]
-        if n == "source_file":
-            vals.append(_adapt_scalar(obj.get("_source_file"), "TEXT", dialect))
-        elif n == "certificate_id":
+        if n == "certificate_id":
             vals.append(_adapt_scalar(obj.get("Id"), "TEXT", dialect))
         elif n == "supplement_id" and fj == "Id":
             vals.append(_adapt_scalar(sup.get("Id"), "TEXT", dialect))
@@ -121,9 +119,7 @@ def _row_decision(
         n = c["name"]
         fj = c.get("from_json")
         st = c["sql_type"]
-        if n == "source_file":
-            vals.append(_adapt_scalar(obj.get("_source_file"), "TEXT", dialect))
-        elif n == "certificate_id":
+        if n == "certificate_id":
             vals.append(_adapt_scalar(obj.get("Id"), "TEXT", dialect))
         elif n == "decision_id" and fj == "Id":
             vals.append(_adapt_scalar(dec.get("Id"), "TEXT", dialect))
@@ -147,9 +143,7 @@ def _row_program(
         n = c["name"]
         fj = c.get("from_json")
         st = c["sql_type"]
-        if n == "source_file":
-            vals.append(_adapt_scalar(obj.get("_source_file"), "TEXT", dialect))
-        elif n == "certificate_id":
+        if n == "certificate_id":
             vals.append(_adapt_scalar(obj.get("Id"), "TEXT", dialect))
         elif n == "program_slot":
             vals.append(int(program_slot))
@@ -165,7 +159,6 @@ def _row_program(
 
 
 def _row_aeo(
-    source_file: str,
     certificate_id: str,
     ae_scope: str,
     supplement_id: str | None,
@@ -178,9 +171,7 @@ def _row_aeo(
         n = c["name"]
         fj = c.get("from_json")
         st = c["sql_type"]
-        if n == "source_file":
-            vals.append(_adapt_scalar(source_file, "TEXT", dialect))
-        elif n == "certificate_id":
+        if n == "certificate_id":
             vals.append(_adapt_scalar(certificate_id, "TEXT", dialect))
         elif n == "ae_scope":
             vals.append(ae_scope)
@@ -243,16 +234,18 @@ def iter_certificate_inserts(
 
     aeo_cols = _table_columns(mapping, "actual_education_organizations")
     anames = [c["name"] for c in aeo_cols]
-    sf = obj.get("_source_file")
-    cid = obj.get("Id")
-    if not isinstance(sf, str) or not isinstance(cid, str):
+    raw_id = obj.get("Id")
+    if raw_id is None:
+        return
+    cid = str(raw_id).strip()
+    if not cid:
         return
     root_aeo = obj.get("ActualEducationOrganization")
     if isinstance(root_aeo, dict) and root_aeo.get("Id") is not None:
         yield (
             "actual_education_organizations",
             anames,
-            _row_aeo(sf, cid, "certificate", None, root_aeo, aeo_cols, dialect),
+            _row_aeo(cid, "certificate", None, root_aeo, aeo_cols, dialect),
         )
     for sup in obj.get("Supplements") or []:
         if not isinstance(sup, dict):
@@ -266,7 +259,7 @@ def iter_certificate_inserts(
             yield (
                 "actual_education_organizations",
                 anames,
-                _row_aeo(sf, cid, "supplement", sid_s, sub, aeo_cols, dialect),
+                _row_aeo(cid, "supplement", sid_s, sub, aeo_cols, dialect),
             )
 
 

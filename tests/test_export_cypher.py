@@ -63,7 +63,6 @@ def test_iter_cypher_multiple_supplements(ms_jsonl: Path) -> None:
 def test_iter_cypher_educational_levels_and_org_offers() -> None:
     mapping = load_kg_mapping()
     obj = {
-        "_source_file": "t.xml",
         "Id": "c1",
         "IsFederal": False,
         "Supplements": [
@@ -95,7 +94,6 @@ def test_iter_cypher_educational_levels_and_org_offers() -> None:
 def test_iter_cypher_region_and_aeo_ogrn() -> None:
     mapping = load_kg_mapping()
     obj = {
-        "_source_file": "t.xml",
         "Id": "c1",
         "RegionName": "Свердловская область",
         "IsFederal": False,

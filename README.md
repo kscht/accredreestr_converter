@@ -98,7 +98,7 @@ https://isga.obrnadzor.gov.ru/accredreestr/opendata/
 ## Схема XML
 
 Корень: `OpenData` → `Certificates` → `Certificate`. Коллекции: `Supplements`/`Supplement`, `Decisions`/`Decision`, `EducationalPrograms`/`EducationalProgram`; вложенность `ActualEducationOrganization`.  
-В JSON каждая строка содержит **`_source_file`** — имя исходного XML (без пути).
+В JSON каждая строка — **только поля сертификата** из XML (без имени исходного файла); при слиянии нескольких XML в один JSONL следите за уникальностью корневого `Id`.
 
 **Решения без идентификатора документа:** если у `<Decision>` в выгрузке пустой `<Id/>`, конвертер честно кладёт в JSON `Decisions[]` объект с `Id: null` (организация и свидетельство в строке **остаются**). При загрузке в SQL/DuckDB/Parquet по `specs/sql/mapping.json` строка в таблице **`decisions`** для такого элемента **не создаётся** (нужен непустой ключ документа); это не означает «нет организации», а означает «нет отдельной реляционной записи о документе без `Id` в источнике». Подробнее: [`docs/sql_convert.md`](docs/sql_convert.md), [`docs/knowledge_graph.md`](docs/knowledge_graph.md).
 
@@ -209,7 +209,7 @@ python -m parquet_convert.import_duckdb out/data.jsonl --parquet-dir out/parquet
 ## Пример строки JSONL
 
 ```json
-{"Id":"123","IsFederal":true,"Supplements":[],"Decisions":[],"_source_file":"federal.xml"}
+{"Id":"123","IsFederal":true,"Supplements":[],"Decisions":[]}
 ```
 
 ## Knowledge Graph, SQL, DuckDB/Parquet, Prisma и JSON Schema
@@ -261,7 +261,7 @@ df = pd.read_json("out/merged.jsonl", lines=True)
 ```
 
 ```sql
-SELECT _source_file, count(*) FROM read_json_auto('out/merged.jsonl') GROUP BY 1;
+SELECT Id, count(*) FROM read_json_auto('out/merged.jsonl') GROUP BY 1;
 ```
 (DuckDB / аналог)
 

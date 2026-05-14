@@ -54,8 +54,8 @@ def test_schema_validates_multiple_supplements(
     validator.validate(row)
 
 
-def test_schema_rejects_missing_source_file(
+def test_schema_rejects_missing_id(
     validator: jsonschema.Draft202012Validator,
 ) -> None:
     with pytest.raises(jsonschema.ValidationError):
-        validator.validate({"Id": "x"})
+        validator.validate({"Supplements": [], "Decisions": []})

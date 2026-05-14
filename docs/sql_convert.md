@@ -7,7 +7,7 @@
 Файл **[`../specs/sql/mapping.json`](../specs/sql/mapping.json)** описывает:
 
 - таблицы `certificates`, `supplements`, `decisions`, `educational_programs`, `actual_education_organizations`;
-- составные **первичные ключи** (всегда участвуют `source_file` + `certificate_id`, где `certificate_id` — значение JSON `Id` корня строки);
+- составные **первичные ключи**: корень — **`certificate_id`** (значение JSON `Id` свидетельства на корне строки); дочерние таблицы расширяют ключ своими полями (см. `mapping.json`);
 - **внешние ключи** и каскады;
 - соответствие **колонка SQL** ↔ **`from_json`** (имя ключа в объекте после разбора конвертером).
 
@@ -25,19 +25,19 @@
 
 ## Первичный ключ и дубликаты
 
-Составной ключ `(source_file, certificate_id)` для **`certificates`** привязывает запись к **конкретной выгрузке** и **Id свидетельства в XML**. Дочерние таблицы расширяют этот префикс своими полями; полный перечень PK задан в [`specs/sql/mapping.json`](../specs/sql/mapping.json):
+Первичный ключ **`certificates`** — **`certificate_id`** (корневой JSON `Id`). Имя исходного XML в JSONL **не хранится**: при слиянии нескольких выгрузок в один файл возможны **коллизии** одного и того же `Id` — закладывайте внешний идентификатор снимка или не смешивайте разные источники без дедупликации. Дочерние таблицы ссылаются на `certificates` по `certificate_id`; полный перечень PK — в [`specs/sql/mapping.json`](../specs/sql/mapping.json):
 
 | Таблица | Первичный ключ (колонки) |
 |---------|--------------------------|
-| `certificates` | `source_file`, `certificate_id` |
-| `supplements` | `source_file`, `certificate_id`, `supplement_id` |
-| `decisions` | `source_file`, `certificate_id`, `decision_id` |
-| `educational_programs` | `source_file`, `certificate_id`, `supplement_id`, **`program_slot`** |
-| `actual_education_organizations` | `source_file`, `certificate_id`, `ae_scope`, `supplement_id`, `aeo_id` |
+| `certificates` | `certificate_id` |
+| `supplements` | `certificate_id`, `supplement_id` |
+| `decisions` | `certificate_id`, `decision_id` |
+| `educational_programs` | `certificate_id`, `supplement_id`, **`program_slot`** |
+| `actual_education_organizations` | `certificate_id`, `ae_scope`, `supplement_id`, `aeo_id` |
 
 **`program_slot`** в JSONL **нет**: при импорте задаётся как **индекс** (0, 1, …) элемента в массиве `EducationalPrograms[]` внутри данного элемента `Supplements[]`. Колонка **`program_id`** хранит реестровый `Id` программы и **может повторяться** в нескольких строках таблицы.
 
-При повторной загрузке того же файла используйте **`ON CONFLICT DO UPDATE`** или сначала удалите строки с этим `source_file`.
+При повторной загрузке того же набора строк используйте **`ON CONFLICT DO UPDATE`** по PK или очищайте таблицы перед загрузкой.
 
 ## Типы и «грязные» даты
 

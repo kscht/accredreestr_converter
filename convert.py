@@ -453,7 +453,6 @@ def convert_one(
                     schema_tags,
                     "Certificate",
                 )
-                record["_source_file"] = base
                 if omit_inactive and (
                     record.get("StatusName") == CERTIFICATE_STATUS_OMITTED_FROM_JSONL
                 ):

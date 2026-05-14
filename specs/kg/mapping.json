@@ -1,12 +1,12 @@
 {
   "format_version": 1,
   "source_profile": "jsonl_one_object_per_line_root_equals_certificate_record",
-  "description_ru": "Описание узлов и рёбер для построения property graph или RDF из строк JSONL конвертера. Идентификаторы — шаблоны: подставляйте значения из той же строки JSON; для EducationalProgram в шаблон входит program_slot (индекс в массиве программ приложения), его нет в JSON — вычисляйте при обходе Supplements[].EducationalPrograms[]. При коллизиях IRI добавляйте версию снимка.",
+  "description_ru": "Описание узлов и рёбер для построения property graph или RDF из строк JSONL конвертера. Идентификаторы — шаблоны по цепочке JSON Id (имя файла выгрузки в JSONL не входит); при слиянии разных снимков с одинаковыми Id возможны коллизии IRI — добавляйте внешний префикс снимка на стороне пайплайна.",
   "id_conventions": {
     "namespace": "urn:accred:v1:",
     "rules": [
       "Все глобальные URI строить из состава: namespace + kind + ':' + устойчивый локальный ключ.",
-      "Локальный ключ сертификата: basename(_source_file) + ':' + строковое значение поля Id.",
+      "Локальный ключ сертификата: строковое значение поля Id на корне строки JSONL.",
       "Дочерние сущности включают в ключ идентификатор родителя, чтобы Id внутри приложения не путался между сертификатами.",
       "Узел EducationalProgram: в локальный ключ входят supplement Id и program_slot (0, 1, … по порядку в EducationalPrograms[]) и Id программы в реестре — одинаковый реестровый Id у нескольких строк массива нормален (разные периоды аккредитации)."
     ]
@@ -15,8 +15,10 @@
     {
       "kind": "Certificate",
       "description_ru": "Свидетельство (корень объекта в строке JSONL)",
-      "id_template": "urn:accred:v1:Certificate:{_source_file_basename}:{Id}",
-      "id_fields": ["_source_file", "Id"],
+      "id_template": "urn:accred:v1:Certificate:{Id}",
+      "id_fields": [
+        "Id"
+      ],
       "scalar_property_groups": [
         {
           "group": "certificate_core",
@@ -59,8 +61,11 @@
     {
       "kind": "Supplement",
       "description_ru": "Приложение к свидетельству",
-      "id_template": "urn:accred:v1:Supplement:{_source_file_basename}:{certificate_Id}:{Supplement.Id}",
-      "id_fields": ["_source_file", "Id", "Supplements[].Id"],
+      "id_template": "urn:accred:v1:Supplement:{certificate_Id}:{Supplement.Id}",
+      "id_fields": [
+        "Id",
+        "Supplements[].Id"
+      ],
       "json_container": "Supplements",
       "item_key": "Supplement",
       "scalar_property_groups": [
@@ -86,8 +91,11 @@
     {
       "kind": "Decision",
       "description_ru": "Распорядительный документ. Узел в графе задаётся только при непустом Decisions[].Id; при пустом Id объект в JSONL может быть без устойчивого IRI — узел Certificate и данные об организации из строки остаются валидными.",
-      "id_template": "urn:accred:v1:Decision:{_source_file_basename}:{certificate_Id}:{Decision.Id}",
-      "id_fields": ["_source_file", "Id", "Decisions[].Id"],
+      "id_template": "urn:accred:v1:Decision:{certificate_Id}:{Decision.Id}",
+      "id_fields": [
+        "Id",
+        "Decisions[].Id"
+      ],
       "json_container": "Decisions",
       "item_key": "Decision",
       "scalar_property_groups": [
@@ -105,9 +113,8 @@
     {
       "kind": "EducationalProgram",
       "description_ru": "Образовательная программа внутри приложения. В шаблоне program_slot — порядковый индекс элемента в EducationalPrograms[] данного Supplement (0, 1, …), т.к. Id программы в реестре может повторяться для разных периодов.",
-      "id_template": "urn:accred:v1:EducationalProgram:{_source_file_basename}:{certificate_Id}:{supplement_Id}:{program_slot}:{EducationalProgram.Id}",
+      "id_template": "urn:accred:v1:EducationalProgram:{certificate_Id}:{supplement_Id}:{program_slot}:{EducationalProgram.Id}",
       "id_fields": [
-        "_source_file",
         "Id",
         "Supplements[].Id",
         "program_slot",
@@ -137,7 +144,9 @@
       "kind": "EducationalLevel",
       "description_ru": "Уровень образования (уникальный текст EduLevelName). Глобальный URI: urn:accred:v1:EducationalLevel:<64 hex SHA-256 от UTF-8 строки имени после trim>. На узле свойство name — тот же текст.",
       "id_template": "urn:accred:v1:EducationalLevel:{sha256_utf8_EduLevelName}",
-      "id_fields": ["EduLevelName"],
+      "id_fields": [
+        "EduLevelName"
+      ],
       "scalar_property_groups": [
         {
           "group": "level_display",
@@ -150,7 +159,9 @@
       "kind": "Region",
       "description_ru": "Регион (текст RegionName с сертификата или с карточки ОО). URI: urn:accred:v1:Region:<64 hex SHA-256 от UTF-8 строки после trim>. Свойство name — исходная строка.",
       "id_template": "urn:accred:v1:Region:{sha256_utf8_RegionName}",
-      "id_fields": ["RegionName"],
+      "id_fields": [
+        "RegionName"
+      ],
       "scalar_property_groups": [
         {
           "group": "region_display",
@@ -162,8 +173,12 @@
     {
       "kind": "ActualEducationOrganization",
       "description_ru": "Карточка образовательной организации (вложенный объект). Идентификатор узла в графе — по шаблону AEO (не по ОГРН); свойство OGRN и др. остаётся на узле для связей и сверки по реестру. Узлы с разными AEO.Id в scope certificate и supplement в одной строке JSONL типично соответствуют головной организации и филиалу (отдельная ОО в приложении).",
-      "id_template": "urn:accred:v1:AEO:{_source_file_basename}:{certificate_Id}:{scope}:{AEO.Id}",
-      "id_fields": ["_source_file", "Id", "scope", "ActualEducationOrganization.Id"],
+      "id_template": "urn:accred:v1:AEO:{certificate_Id}:{scope}:{AEO.Id}",
+      "id_fields": [
+        "Id",
+        "scope",
+        "ActualEducationOrganization.Id"
+      ],
       "scope_values": [
         {
           "value": "certificate",
@@ -282,7 +297,14 @@
   "same_as_hints": [
     {
       "description_ru": "Опционально: связать узлы по ИНН/ОГРН между разными сертификатами (owl:sameAs / custom SAME_ORG) — только после нормализации идентификаторов",
-      "json_keys_candidates": ["INN", "OGRN", "EduOrgINN", "EduOrgOGRN", "KPP", "EduOrgKPP"]
+      "json_keys_candidates": [
+        "INN",
+        "OGRN",
+        "EduOrgINN",
+        "EduOrgOGRN",
+        "KPP",
+        "EduOrgKPP"
+      ]
     }
   ],
   "related_artifacts": [

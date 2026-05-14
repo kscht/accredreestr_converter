@@ -17,7 +17,6 @@ erDiagram
   supplements ||--o{ actual_education_organizations : "ActualEducationOrganization (в приложении)"
 
   certificates {
-    text source_file PK
     text certificate_id PK
     boolean is_federal
     text status_name
@@ -47,7 +46,6 @@ erDiagram
   }
 
   supplements {
-    text source_file PK, FK
     text certificate_id PK, FK
     text supplement_id PK
     text status_name
@@ -65,7 +63,6 @@ erDiagram
   }
 
   decisions {
-    text source_file PK, FK
     text certificate_id PK, FK
     text decision_id PK
     text decision_type_name
@@ -75,7 +72,6 @@ erDiagram
   }
 
   educational_programs {
-    text source_file PK, FK
     text certificate_id PK, FK
     text supplement_id PK, FK
     int program_slot PK
@@ -94,7 +90,6 @@ erDiagram
   }
 
   actual_education_organizations {
-    text source_file PK, FK
     text certificate_id PK, FK
     text ae_scope PK
     text supplement_id PK, FK

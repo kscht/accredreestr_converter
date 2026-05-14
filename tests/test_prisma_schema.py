@@ -43,7 +43,7 @@ def test_build_prisma_schema_contains_models() -> None:
     assert "model Supplement" in text
     assert '@relation("AeoViaCertificate"' in text
     assert '@relation("AeoViaSupplement"' in text
-    assert "@@id([source_file, certificate_id])" in text
+    assert '@@id([certificate_id])' in text
 
 
 @pytest.mark.skipif(shutil.which("npx") is None, reason="Нужен npx для prisma validate")

@@ -67,10 +67,6 @@ def load_kg_mapping(path: Path | None = None) -> dict[str, Any]:
     return json.loads(p.read_text(encoding="utf-8"))
 
 
-def _basename_source(sf: str) -> str:
-    return Path(sf).name
-
-
 def _subst(template: str, ctx: dict[str, Any]) -> str:
     out = template
 
@@ -138,14 +134,13 @@ def iter_cypher_for_certificate(
 ) -> Iterator[str]:
     """Строки Cypher для одной записи JSONL (один сертификат)."""
     kinds = _kind_by_name(mapping)
-    sf = obj.get("_source_file")
     cid = obj.get("Id")
-    if not isinstance(sf, str) or cid is None:
+    if cid is None:
         return
-    cid_s = str(cid)
-    base = _basename_source(sf)
+    cid_s = str(cid).strip()
+    if not cid_s:
+        return
     ctx0: dict[str, Any] = {
-        "_source_file_basename": base,
         "Id": cid_s,
         "certificate_Id": cid_s,
     }

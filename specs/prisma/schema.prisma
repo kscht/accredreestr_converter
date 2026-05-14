@@ -12,7 +12,6 @@ datasource db {
 
 /// Одна строка = одна строка JSONL (одно свидетельство).
 model Certificate {
-  source_file String @db.Text
   certificate_id String @db.Text
   is_federal Boolean?
   status_name String? @db.Text
@@ -42,13 +41,12 @@ model Certificate {
   supplements Supplement[]
   decisions Decision[]
   actual_education_organizations ActualEducationOrganization[] @relation("AeoViaCertificate")
-  @@id([source_file, certificate_id])
+  @@id([certificate_id])
   @@map("certificates")
 }
 
 /// Элементы массива JSON Supplements (вложенные объекты без обёртки Supplement в JSON — см. convert.py).
 model Supplement {
-  source_file String @db.Text
   certificate_id String @db.Text
   supplement_id String @db.Text
   status_name String? @db.Text
@@ -63,30 +61,28 @@ model Supplement {
   edu_org_short_name String? @db.Text
   edu_org_address String? @db.Text
   edu_org_kpp String? @db.Text
-  certificate Certificate @relation(fields: [source_file, certificate_id], references: [source_file, certificate_id], onDelete: Cascade)
+  certificate Certificate @relation(fields: [certificate_id], references: [certificate_id], onDelete: Cascade)
   educational_programs EducationalProgram[]
   actual_education_organizations ActualEducationOrganization[] @relation("AeoViaSupplement")
-  @@id([source_file, certificate_id, supplement_id])
+  @@id([certificate_id, supplement_id])
   @@map("supplements")
 }
 
 /// Распорядительные документы: по одной строке на элемент Decisions[] с непустым Id в JSONL. Элементы с пустым Id не импортируются (нет ключа документа); сертификат и организация из той же строки JSONL не отбрасываются.
 model Decision {
-  source_file String @db.Text
   certificate_id String @db.Text
   decision_id String @db.Text
   decision_type_name String? @db.Text
   order_document_number String? @db.Text
   order_document_kind String? @db.Text
   decision_date String? @db.Text
-  certificate Certificate @relation(fields: [source_file, certificate_id], references: [source_file, certificate_id], onDelete: Cascade)
-  @@id([source_file, certificate_id, decision_id])
+  certificate Certificate @relation(fields: [certificate_id], references: [certificate_id], onDelete: Cascade)
+  @@id([certificate_id, decision_id])
   @@map("decisions")
 }
 
 /// Программы внутри каждого элемента Supplements (массив EducationalPrograms). Идентификатор программы в реестре (program_id) может повторяться для разных периодов/строк выгрузки; уникальность строки задаёт program_slot — порядковый индекс элемента в массиве EducationalPrograms данного приложения (0, 1, …).
 model EducationalProgram {
-  source_file String @db.Text
   certificate_id String @db.Text
   supplement_id String @db.Text
   program_slot Int
@@ -102,14 +98,13 @@ model EducationalProgram {
   is_accredited Boolean?
   is_canceled Boolean?
   is_suspended Boolean?
-  supplement Supplement @relation(fields: [source_file, certificate_id, supplement_id], references: [source_file, certificate_id, supplement_id], onDelete: Cascade)
-  @@id([source_file, certificate_id, supplement_id, program_slot])
+  supplement Supplement @relation(fields: [certificate_id, supplement_id], references: [certificate_id, supplement_id], onDelete: Cascade)
+  @@id([certificate_id, supplement_id, program_slot])
   @@map("educational_programs")
 }
 
 /// Вложенный объект ActualEducationOrganization: либо на корне сертификата, либо внутри элемента Supplements. Различие по ae_scope и nullable supplement_id. Если aeo_id на корне (ae_scope=certificate) и aeo_id во вложенной строке (ae_scope=supplement) для одной строки JSONL различаются, в типичном случае это означает филиал: приложение привязано к отдельной ОО (часто филиалу), карточка на корне — к головной/основной организации; дополнительно см. поле is_branch.
 model ActualEducationOrganization {
-  source_file String @db.Text
   certificate_id String @db.Text
   ae_scope String @db.Text
   supplement_id String @db.Text
@@ -134,8 +129,8 @@ model ActualEducationOrganization {
   region_name String? @db.Text
   federal_district_short_name String? @db.Text
   federal_district_name String? @db.Text
-  certificate Certificate @relation("AeoViaCertificate", fields: [source_file, certificate_id], references: [source_file, certificate_id], onDelete: Cascade)
-  supplement Supplement? @relation("AeoViaSupplement", fields: [source_file, certificate_id, supplement_id], references: [source_file, certificate_id, supplement_id], onDelete: Cascade)
-  @@id([source_file, certificate_id, ae_scope, supplement_id, aeo_id])
+  certificate Certificate @relation("AeoViaCertificate", fields: [certificate_id], references: [certificate_id], onDelete: Cascade)
+  supplement Supplement? @relation("AeoViaSupplement", fields: [certificate_id, supplement_id], references: [certificate_id, supplement_id], onDelete: Cascade)
+  @@id([certificate_id, ae_scope, supplement_id, aeo_id])
   @@map("actual_education_organizations")
 }

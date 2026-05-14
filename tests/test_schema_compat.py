@@ -48,5 +48,6 @@ def test_schema_can_be_converted(tmp_path: Path) -> None:
     lines = [ln for ln in out.read_text(encoding="utf-8").splitlines() if ln.strip()]
     assert len(lines) >= 1
     row = json.loads(lines[0])
-    assert row.get("_source_file") == SCHEMA.name
+    assert "_source_file" not in row
+    assert row.get("Id")
     assert stats.per_file[SCHEMA.name]["processed"] >= 1

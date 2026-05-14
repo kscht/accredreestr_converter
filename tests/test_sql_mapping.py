@@ -21,10 +21,10 @@ def test_sql_mapping_json_loads() -> None:
         "actual_education_organizations",
     }
     cert = next(t for t in data["tables"] if t["name"] == "certificates")
-    assert cert["primary_key"] == ["source_file", "certificate_id"]
+    assert cert["primary_key"] == ["certificate_id"]
+    assert "source_file" not in {c["name"] for c in cert["columns"]}
     prog = next(t for t in data["tables"] if t["name"] == "educational_programs")
     assert prog["primary_key"] == [
-        "source_file",
         "certificate_id",
         "supplement_id",
         "program_slot",

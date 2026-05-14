@@ -182,7 +182,7 @@ def _child_array_field_name(child_table: str) -> str:
 def _fk_optional(child_table: str, fk_cols: list[str], col_names: set[str]) -> bool:
     if child_table != "actual_education_organizations":
         return False
-    if fk_cols == ["source_file", "certificate_id", "supplement_id"]:
+    if fk_cols == ["certificate_id", "supplement_id"]:
         return "supplement_id" in col_names
     return False
 

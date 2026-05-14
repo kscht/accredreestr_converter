@@ -1,15 +1,17 @@
 {
   "format_version": 1,
   "source_profile": "jsonl_one_object_per_line_root_equals_certificate_record",
-  "description_ru": "Нормализованная реляционная проекция строк JSONL: таблицы, составные ключи и внешние ключи для ETL / генерации DDL. Один файл описывает схему для SQLite, PostgreSQL, MySQL (InnoDB) и DuckDB; физические типы и кавычки идентификаторов задаёт диалект в sql_convert/sql_ddl.py. Политика импорта: элементы Decisions[] без непустого Id не вставляются в decisions; в educational_programs PK включает program_slot (порядок в массиве), т.к. program_id (JSON Id программы) может повторяться между строками одного приложения.",
+  "description_ru": "Нормализованная реляционная проекция строк JSONL: таблицы, ключи и внешние ключи для ETL / генерации DDL. Имя исходного XML в JSONL не хранится: первичный ключ свидетельства — certificate_id (корневой JSON Id). При слиянии нескольких выгрузок в один JSONL возможны коллизии Id — учитывайте на стороне ETL. Политика импорта: элементы Decisions[] без непустого Id не вставляются в decisions; в educational_programs PK включает program_slot.",
   "naming": {
     "tables": "snake_case plural",
     "columns": "snake_case",
     "json_Id_on_certificate": "Колонка certificate_id (значение из JSON поля Id корня строки)"
   },
   "primary_key_convention": {
-    "certificate": ["source_file", "certificate_id"],
-    "children": "Всегда включают (source_file, certificate_id) для ссылки на certificates; дочерние id — из соответствующего JSON Id, кроме educational_programs: там в PK входит program_slot (целое 0..n — индекс в EducationalPrograms[] данного Supplement), а program_id — идентификатор программы в реестре, не обязан быть уникальным в таблице."
+    "certificate": [
+      "certificate_id"
+    ],
+    "children": "Дочерние строки ссылаются на certificates по certificate_id (корневой JSON Id). Идентификаторы вложенных сущностей — из соответствующих JSON Id; в educational_programs в PK входит program_slot, т.к. program_id (JSON Id программы) может повторяться."
   },
   "type_hints_ru": {
     "TEXT": "Строки, «грязные» ИНН/ОГРН, даты если не нормализуете при загрузке.",
@@ -21,14 +23,10 @@
     {
       "name": "certificates",
       "description_ru": "Одна строка = одна строка JSONL (одно свидетельство).",
-      "primary_key": ["source_file", "certificate_id"],
+      "primary_key": [
+        "certificate_id"
+      ],
       "columns": [
-        {
-          "name": "source_file",
-          "from_json": "_source_file",
-          "sql_type": "TEXT",
-          "nullable": false
-        },
         {
           "name": "certificate_id",
           "from_json": "Id",
@@ -191,22 +189,23 @@
     {
       "name": "supplements",
       "description_ru": "Элементы массива JSON Supplements (вложенные объекты без обёртки Supplement в JSON — см. convert.py).",
-      "primary_key": ["source_file", "certificate_id", "supplement_id"],
+      "primary_key": [
+        "certificate_id",
+        "supplement_id"
+      ],
       "foreign_keys": [
         {
-          "columns": ["source_file", "certificate_id"],
+          "columns": [
+            "certificate_id"
+          ],
           "references_table": "certificates",
-          "references_columns": ["source_file", "certificate_id"],
+          "references_columns": [
+            "certificate_id"
+          ],
           "on_delete": "CASCADE"
         }
       ],
       "columns": [
-        {
-          "name": "source_file",
-          "from_json": "_source_file",
-          "sql_type": "TEXT",
-          "nullable": false
-        },
         {
           "name": "certificate_id",
           "from_json": "Id",
@@ -298,22 +297,23 @@
     {
       "name": "decisions",
       "description_ru": "Распорядительные документы: по одной строке на элемент Decisions[] с непустым Id в JSONL. Элементы с пустым Id не импортируются (нет ключа документа); сертификат и организация из той же строки JSONL не отбрасываются.",
-      "primary_key": ["source_file", "certificate_id", "decision_id"],
+      "primary_key": [
+        "certificate_id",
+        "decision_id"
+      ],
       "foreign_keys": [
         {
-          "columns": ["source_file", "certificate_id"],
+          "columns": [
+            "certificate_id"
+          ],
           "references_table": "certificates",
-          "references_columns": ["source_file", "certificate_id"],
+          "references_columns": [
+            "certificate_id"
+          ],
           "on_delete": "CASCADE"
         }
       ],
       "columns": [
-        {
-          "name": "source_file",
-          "from_json": "_source_file",
-          "sql_type": "TEXT",
-          "nullable": false
-        },
         {
           "name": "certificate_id",
           "from_json": "Id",
@@ -358,17 +358,18 @@
       "name": "educational_programs",
       "description_ru": "Программы внутри каждого элемента Supplements (массив EducationalPrograms). Идентификатор программы в реестре (program_id) может повторяться для разных периодов/строк выгрузки; уникальность строки задаёт program_slot — порядковый индекс элемента в массиве EducationalPrograms данного приложения (0, 1, …).",
       "primary_key": [
-        "source_file",
         "certificate_id",
         "supplement_id",
         "program_slot"
       ],
       "foreign_keys": [
         {
-          "columns": ["source_file", "certificate_id", "supplement_id"],
+          "columns": [
+            "certificate_id",
+            "supplement_id"
+          ],
           "references_table": "supplements",
           "references_columns": [
-            "source_file",
             "certificate_id",
             "supplement_id"
           ],
@@ -376,12 +377,6 @@
         }
       ],
       "columns": [
-        {
-          "name": "source_file",
-          "from_json": "_source_file",
-          "sql_type": "TEXT",
-          "nullable": false
-        },
         {
           "name": "certificate_id",
           "from_json": "Id",
@@ -481,7 +476,6 @@
       "name": "actual_education_organizations",
       "description_ru": "Вложенный объект ActualEducationOrganization: либо на корне сертификата, либо внутри элемента Supplements. Различие по ae_scope и nullable supplement_id. Если aeo_id на корне (ae_scope=certificate) и aeo_id во вложенной строке (ae_scope=supplement) для одной строки JSONL различаются, в типичном случае это означает филиал: приложение привязано к отдельной ОО (часто филиалу), карточка на корне — к головной/основной организации; дополнительно см. поле is_branch.",
       "primary_key": [
-        "source_file",
         "certificate_id",
         "ae_scope",
         "supplement_id",
@@ -489,16 +483,22 @@
       ],
       "foreign_keys": [
         {
-          "columns": ["source_file", "certificate_id"],
+          "columns": [
+            "certificate_id"
+          ],
           "references_table": "certificates",
-          "references_columns": ["source_file", "certificate_id"],
+          "references_columns": [
+            "certificate_id"
+          ],
           "on_delete": "CASCADE"
         },
         {
-          "columns": ["source_file", "certificate_id", "supplement_id"],
+          "columns": [
+            "certificate_id",
+            "supplement_id"
+          ],
           "references_table": "supplements",
           "references_columns": [
-            "source_file",
             "certificate_id",
             "supplement_id"
           ],
@@ -507,12 +507,6 @@
         }
       ],
       "columns": [
-        {
-          "name": "source_file",
-          "from_json": "_source_file",
-          "sql_type": "TEXT",
-          "nullable": false
-        },
         {
           "name": "certificate_id",
           "from_json": "Id",
@@ -523,7 +517,10 @@
         {
           "name": "ae_scope",
           "from_json": null,
-          "literal_values": ["certificate", "supplement"],
+          "literal_values": [
+            "certificate",
+            "supplement"
+          ],
           "sql_type": "TEXT",
           "nullable": false,
           "note_ru": "Не из JSON: задаётся при разборе вложенности."

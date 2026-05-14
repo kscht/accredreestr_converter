@@ -53,7 +53,7 @@ def test_minimal(tmp_path: Path) -> None:
     assert row["IsFederal"] is True
     assert row["IssueDate"] == "2020-01-15"
     assert row["EndDate"] == "2025-01-15"
-    assert row["_source_file"] == "minimal.xml"
+    assert "_source_file" not in row
     assert row["Supplements"] == []
     assert row["Decisions"] == []
     assert stats.per_file["minimal.xml"]["processed"] == 1
@@ -186,7 +186,6 @@ def test_ugs_code_old_six_digits_to_dotted() -> None:
 
 def test_omit_empty_json_values() -> None:
     raw: dict = {
-        "_source_file": "x.xml",
         "Id": "1",
         "A": None,
         "B": "",
@@ -198,7 +197,6 @@ def test_omit_empty_json_values() -> None:
         "H": False,
     }
     out = c.omit_empty_json_values(raw)
-    assert out["_source_file"] == "x.xml"
     assert out["Id"] == "1"
     assert "A" not in out and "B" not in out and "C" not in out
     assert out["D"] == {"y": 1}
@@ -433,7 +431,7 @@ def test_multiple_inputs_merged(tmp_path: Path) -> None:
         schema_path=SCHEMA,
     )
     rows = _read_jsonl(out)
-    assert {r["_source_file"] for r in rows} == {"a.xml", "b.xml", "c.xml"}
+    assert len(rows) == 3
     assert {r["Id"] for r in rows} == {"a1", "b1", "c1"}
 
 
