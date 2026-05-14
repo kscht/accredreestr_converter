@@ -48,4 +48,4 @@
 
 ## Диаграммы
 
-Черновики и экспорт схем пайплайна (Mermaid, изображения) — в **[`diagrams/`](diagrams/)**. Реляционная схема БД по SQL-mapping: **[`diagrams/sql_schema_er.md`](diagrams/sql_schema_er.md)** (Mermaid `erDiagram`, рендер на GitHub).
+Черновики и экспорт схем пайплайна (Mermaid, изображения) — в **[`diagrams/`](diagrams/)**. Реляционная схема БД по SQL-mapping: **[`diagrams/sql_schema_er.md`](diagrams/sql_schema_er.md)** (Mermaid `erDiagram`; **полный** список колонок из `mapping.json`, обновление: `python tools/generate_sql_er_diagram.py`).

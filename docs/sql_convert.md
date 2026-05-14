@@ -13,7 +13,7 @@
 
 Импортёр: одна строка JSONL → `INSERT`/`COPY` в `certificates` + дочерние строки по массивам и вложенному объекту.
 
-Тот же файл служит источником для **Prisma** (`python tools/generate_prisma_schema.py`, см. [`prisma.md`](prisma.md)) и для **DuckDB / Parquet** (`python -m parquet_convert.import_duckdb`, см. [`parquet_duckdb.md`](parquet_duckdb.md)).
+Тот же файл служит источником для **Prisma** (`python tools/generate_prisma_schema.py`, см. [`prisma.md`](prisma.md)) и для **DuckDB / Parquet** (`python -m parquet_convert.import_duckdb`, см. [`parquet_duckdb.md`](parquet_duckdb.md)). Mermaid **ER-диаграмма** всех таблиц и колонок (для GitHub): **`docs/diagrams/sql_schema_er.md`** — пересборка **`python tools/generate_sql_er_diagram.py`** после правок `mapping.json`.
 
 ## Важные детали JSON (как в `convert.py`)
 

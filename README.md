@@ -53,6 +53,7 @@ python convert.py data/data-*-structure-*.xml \
 | `specs/prisma/schema.prisma` | Схема Prisma (перегенерировать после смены SQL-mapping) |
 | `specs/json-schema/certificate-line.schema.json` | JSON Schema (2020-12) для одной строки JSONL |
 | `tools/generate_json_schema.py` | Перегенерация JSON Schema |
+| `tools/generate_sql_er_diagram.py` | Mermaid ER по `specs/sql/mapping.json` → `docs/diagrams/sql_schema_er.md` |
 | `tools/sample_jsonl_lines.py` | Случайная подвыборка N строк из большого JSONL (резервуар, один проход) |
 | `tools/generate_test_jsonl_samples.py` | Набор выборок 10/50/100/500/5000 строк → `examples/jsonl_samples/sample_*.jsonl` |
 | `tools/analyze_aeo_cert_vs_supplement.py` | Сводка несовпадений AEO (корень сертификата vs приложения); образцы в `examples/jsonl_samples_aeo_mismatch/sample_*.jsonl` |

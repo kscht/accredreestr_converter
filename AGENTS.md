@@ -34,6 +34,7 @@
 | `specs/prisma/schema.prisma` | Схема Prisma (не править вручную) |
 | `specs/json-schema/certificate-line.schema.json` | JSON Schema (2020-12) для одной строки JSONL |
 | `tools/generate_json_schema.py` | Перегенерация JSON Schema |
+| `tools/generate_sql_er_diagram.py` | `docs/diagrams/sql_schema_er.md` — Mermaid `erDiagram` из `specs/sql/mapping.json` (все колонки и FK, как в DDL) |
 | `tools/sample_jsonl_lines.py` | Подвыборка N строк из большого JSONL (резервуар, один проход); пример: `out/sample_live_5000.jsonl` |
 | `tools/generate_test_jsonl_samples.py` | Набор случайных JSONL 10/50/100/500/5000 строк в `examples/jsonl_samples/` |
 | `tools/analyze_aeo_cert_vs_supplement.py` | Сводка AEO корень vs приложения; детерминированные `sample_*.jsonl` (первые N расхождений по файлу) в `examples/jsonl_samples_aeo_mismatch/`; `--no-samples` только stdout |
@@ -53,6 +54,7 @@
 | `scrape_opendata.py` | Только поиск URL |
 | `tests/test_convert.py` | Основные тесты |
 | `tests/test_json_schema.py` | JSON Schema vs фикстуры |
+| `tests/test_generate_sql_er_diagram.py` | Генерация Mermaid ER из SQL-mapping |
 | `tests/test_field_labels.py` | Генерация подписей |
 | `tests/test_export_cypher.py` | Экспорт Cypher по KG-mapping |
 | `tests/test_sql_mapping.py` | Структура `specs/sql/mapping.json` |
