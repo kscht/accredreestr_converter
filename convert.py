@@ -3,6 +3,12 @@
 По умолчанию: без «Недействующее» на корне, без псевдорегиона «за пределами РФ», компактный JSON
 (без ключей с null и пустых коллекций после нормализации). ИНН/КПП/ОГРН — только цифры после
 очистки или ключ не пишется; счётчик ``non_digit_ids`` в отчёте ``--report``.
+
+Если у ``ActualEducationOrganization`` на корне и в ``Supplements[]`` совпадают UID
+(``Id`` и при двусторонней заполненности ``HeadEduOrgId``), пустые **INN**/**OGRN** в карточке
+приложения дополняются из корневой AEO или из **EduOrgINN** / **EduOrgOGRN** на сертификате;
+затем пустые поля у **корневой** AEO — из приложения с тем же UID или с тех же EduOrg-полей.
+Отключение: ``--no-fill-aeo-coherent-inn-ogrn`` или API ``fill_aeo_coherent_inn_ogrn=False``.
 """
 
 from __future__ import annotations
@@ -374,6 +380,133 @@ def elem_to_dict(
     return out
 
 
+_ID_WS_HYPHEN = re.compile(r"[\s\-]")
+
+
+def _scalar_digits_only_string(v: Any) -> str | None:
+    """Непустая строка только из цифр после удаления пробелов и дефисов (как после cast_id_number)."""
+    if v is None:
+        return None
+    if isinstance(v, str) and not v.strip():
+        return None
+    cleaned = _ID_WS_HYPHEN.sub("", str(v).strip())
+    if cleaned and cleaned.isdigit():
+        return cleaned
+    return None
+
+
+def _aeo_uid_token(raw: Any) -> str | None:
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    return s.lower() if s else None
+
+
+def _aeo_supplement_uid_matches_root(root_aeo: Any, sup_aeo: Any) -> bool:
+    """Совпадение организации по Id и HeadEduOrgId — как в ``tools/audit_dataset_identity_fields``."""
+    if not isinstance(root_aeo, dict) or not isinstance(sup_aeo, dict):
+        return False
+    rid = _aeo_uid_token(root_aeo.get("Id"))
+    sid = _aeo_uid_token(sup_aeo.get("Id"))
+    if rid is None or sid is None or rid != sid:
+        return False
+    rh = _aeo_uid_token(root_aeo.get("HeadEduOrgId"))
+    sh = _aeo_uid_token(sup_aeo.get("HeadEduOrgId"))
+    if rh and sh:
+        return rh == sh
+    return True
+
+
+def _aeo_field_missing_for_fill(aeo: Any, field_name: str) -> bool:
+    if not isinstance(aeo, dict) or field_name not in aeo:
+        return True
+    v = aeo.get(field_name)
+    if v is None:
+        return True
+    if isinstance(v, str) and not v.strip():
+        return True
+    return False
+
+
+def _donor_inn_for_supplement(root_aeo: Any, row: dict[str, Any]) -> str | None:
+    if isinstance(root_aeo, dict):
+        d = _scalar_digits_only_string(root_aeo.get("INN"))
+        if d:
+            return d
+    return _scalar_digits_only_string(row.get("EduOrgINN"))
+
+
+def _donor_ogrn_for_supplement(root_aeo: Any, row: dict[str, Any]) -> str | None:
+    if isinstance(root_aeo, dict):
+        d = _scalar_digits_only_string(root_aeo.get("OGRN"))
+        if d:
+            return d
+    return _scalar_digits_only_string(row.get("EduOrgOGRN"))
+
+
+def _first_supplement_digit_same_uid(
+    row: dict[str, Any], root_aeo: Any, field: str
+) -> str | None:
+    for sup in row.get("Supplements") or []:
+        if not isinstance(sup, dict):
+            continue
+        saeo = sup.get("ActualEducationOrganization")
+        if not isinstance(saeo, dict):
+            continue
+        if not _aeo_supplement_uid_matches_root(root_aeo, saeo):
+            continue
+        d = _scalar_digits_only_string(saeo.get(field))
+        if d:
+            return d
+    return None
+
+
+def fill_aeo_inn_ogrn_from_coherent_certificate_sources(
+    record: dict[str, Any], stats: ConversionStats
+) -> None:
+    """Дополняет INN/OGRN в корневой и supplement ``ActualEducationOrganization`` при совпадении UID.
+
+    Сначала — карточки в ``Supplements[]`` (донор: корневая AEO, иначе EduOrg* на сертификате),
+    затем — корневая AEO (донор: первая подходящая supplement-карточка, иначе EduOrg*).
+    """
+    root_aeo = record.get("ActualEducationOrganization")
+    for sup in record.get("Supplements") or []:
+        if not isinstance(sup, dict):
+            continue
+        saeo = sup.get("ActualEducationOrganization")
+        if not isinstance(saeo, dict):
+            continue
+        if not _aeo_supplement_uid_matches_root(root_aeo, saeo):
+            continue
+        if _aeo_field_missing_for_fill(saeo, "INN"):
+            d = _donor_inn_for_supplement(root_aeo, record)
+            if d:
+                saeo["INN"] = d
+                stats.aeo_coherent_fill_supplement_inn += 1
+        if _aeo_field_missing_for_fill(saeo, "OGRN"):
+            d = _donor_ogrn_for_supplement(root_aeo, record)
+            if d:
+                saeo["OGRN"] = d
+                stats.aeo_coherent_fill_supplement_ogrn += 1
+
+    if not isinstance(root_aeo, dict):
+        return
+    if _aeo_field_missing_for_fill(root_aeo, "INN"):
+        d = _first_supplement_digit_same_uid(record, root_aeo, "INN") or _scalar_digits_only_string(
+            record.get("EduOrgINN")
+        )
+        if d:
+            root_aeo["INN"] = d
+            stats.aeo_coherent_fill_root_inn += 1
+    if _aeo_field_missing_for_fill(root_aeo, "OGRN"):
+        d = _first_supplement_digit_same_uid(record, root_aeo, "OGRN") or _scalar_digits_only_string(
+            record.get("EduOrgOGRN")
+        )
+        if d:
+            root_aeo["OGRN"] = d
+            stats.aeo_coherent_fill_root_ogrn += 1
+
+
 def has_valid_eduorg_ogrn(record: dict[str, Any]) -> bool:
     """True, если на корне Certificate есть непустой EduOrgOGRN из цифр после очистки.
 
@@ -401,6 +534,10 @@ class ConversionStats:
     broken_records: int = 0
     unknown_tags: list[str] = field(default_factory=list)
     warned_unknown_tags: set[str] = field(default_factory=set)
+    aeo_coherent_fill_supplement_inn: int = 0
+    aeo_coherent_fill_supplement_ogrn: int = 0
+    aeo_coherent_fill_root_inn: int = 0
+    aeo_coherent_fill_root_ogrn: int = 0
 
     def to_report_dict(
         self,
@@ -435,6 +572,12 @@ class ConversionStats:
                     "broken_records": self.broken_records,
                     "unknown_tags": list(self.unknown_tags),
                 },
+                "aeo_coherent_inn_ogrn_fills": {
+                    "supplement_ActualEducationOrganization_INN": self.aeo_coherent_fill_supplement_inn,
+                    "supplement_ActualEducationOrganization_OGRN": self.aeo_coherent_fill_supplement_ogrn,
+                    "root_ActualEducationOrganization_INN": self.aeo_coherent_fill_root_inn,
+                    "root_ActualEducationOrganization_OGRN": self.aeo_coherent_fill_root_ogrn,
+                },
                 "elapsed_seconds": round(elapsed, 3),
             },
         }
@@ -466,6 +609,7 @@ def convert_one(
     omit_invalid_eduorg_ogrn: bool = False,
     source_basename: str | None = None,
     omit_null_keys: bool = True,
+    fill_aeo_coherent_inn_ogrn: bool = True,
 ) -> None:
     """Конвертирует один XML-файл, дописывая строки JSON в открытый файловый объект."""
     _ = schema_path  # зарезервировано для расширений / совместимости API
@@ -497,6 +641,8 @@ def convert_one(
                     schema_tags,
                     "Certificate",
                 )
+                if fill_aeo_coherent_inn_ogrn:
+                    fill_aeo_inn_ogrn_from_coherent_certificate_sources(record, stats)
                 if omit_inactive and (
                     record.get("StatusName") == CERTIFICATE_STATUS_OMITTED_FROM_JSONL
                 ):
@@ -552,6 +698,7 @@ def convert_many(
     omit_outside_rf_region: bool = True,
     omit_invalid_eduorg_ogrn: bool = False,
     omit_null_keys: bool = True,
+    fill_aeo_coherent_inn_ogrn: bool = True,
 ) -> ConversionStats:
     """Конвертирует один или несколько входных XML.
 
@@ -576,6 +723,11 @@ def convert_many(
             и пустые вложенные dict/list (см. ``omit_empty_json_values``).
             По умолчанию **True**; все ключи как у парсера —
             ``omit_null_keys=False`` или ``--include-null-keys``.
+        fill_aeo_coherent_inn_ogrn: Если True, после парсера XML дополнять пустые **INN**/**OGRN**
+            в ``ActualEducationOrganization`` (корень и приложения) при совпадении UID донорами
+            с корневой AEO, с supplement-карточек с тем же UID и с **EduOrgINN** / **EduOrgOGRN**.
+            По умолчанию **True**; отключить — ``fill_aeo_coherent_inn_ogrn=False`` или CLI
+            ``--no-fill-aeo-coherent-inn-ogrn``.
     """
     if not inputs:
         raise ValueError("Нет входных файлов")
@@ -603,6 +755,7 @@ def convert_many(
                     omit_outside_rf_region=omit_outside_rf_region,
                     omit_invalid_eduorg_ogrn=omit_invalid_eduorg_ogrn,
                     omit_null_keys=omit_null_keys,
+                    fill_aeo_coherent_inn_ogrn=fill_aeo_coherent_inn_ogrn,
                 )
     else:
         if output is None:
@@ -623,6 +776,7 @@ def convert_many(
                     omit_outside_rf_region=omit_outside_rf_region,
                     omit_invalid_eduorg_ogrn=omit_invalid_eduorg_ogrn,
                     omit_null_keys=omit_null_keys,
+                    fill_aeo_coherent_inn_ogrn=fill_aeo_coherent_inn_ogrn,
                 )
 
     return stats
@@ -756,6 +910,14 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
             "(полный снимок полей, как сразу после парсера XML)"
         ),
     )
+    p.add_argument(
+        "--no-fill-aeo-coherent-inn-ogrn",
+        action="store_true",
+        help=(
+            "Не дополнять INN/OGRN в ActualEducationOrganization при совпадении UID "
+            "(по умолчанию дополнение из корневой AEO, EduOrgINN/EduOrgOGRN и supplement-карточек включено)"
+        ),
+    )
     return p.parse_args(argv)
 
 
@@ -832,6 +994,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             omit_outside_rf_region=omit_outside_rf_region,
             omit_invalid_eduorg_ogrn=bool(args.omit_invalid_eduorg_ogrn),
             omit_null_keys=omit_null_keys,
+            fill_aeo_coherent_inn_ogrn=not bool(args.no_fill_aeo_coherent_inn_ogrn),
         )
     except ValueError as ve:
         logging.error("%s", ve)

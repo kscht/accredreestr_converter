@@ -1,0 +1,25 @@
+{
+  "source_jsonl": "out/data-20260403-structure-20160713.jsonl",
+  "description_ru": "Строки JSONL, где есть хотя бы одна «проблема» с полями идентичности в смысле `tools/audit_dataset_identity_fields.py` (EduOrgINN, EduOrgOGRN, INN/OGRN у корневой ActualEducationOrganization и INN/OGRN у каждой dict-карточки AEO в Supplements[]). Для таких строк считается, как соотносится `ActualEducationOrganization.Id` в приложении с `Id` корневой AEO (strip, сравнение без учёта регистра). Не путать с `Id` сертификата или `Supplements[].Id`.",
+  "identity_issue_definition_ru": "Проблема: поле отсутствует, null или пустая строка после strip; либо после удаления пробелов и дефисов остаток непустой и не состоит только из цифр (как nonempty_not_digits_only_after_clean).",
+  "certificate_lines_total": 43893,
+  "certificates_with_any_identity_issue": 2832,
+  "certificates_with_issue_and_at_least_one_supplement_dict": 2831,
+  "when_certificate_has_identity_issue_supplement_aeo_dict_cards": {
+    "total_cards": 9833,
+    "same_ActualEducationOrganization_Id_as_root": 4037,
+    "different_ActualEducationOrganization_Id_from_root": 5786,
+    "incomparable_Id_missing_on_root_or_supplement_aeo": 10
+  },
+  "when_certificate_has_identity_issue_and_supplement_aeo_has_inn_or_ogrn_issue": {
+    "total_cards": 5500,
+    "same_ActualEducationOrganization_Id_as_root": 2,
+    "different_ActualEducationOrganization_Id_from_root": 5488,
+    "incomparable_Id_missing_on_root_or_supplement_aeo": 10
+  },
+  "glossary_ru": {
+    "same_ActualEducationOrganization_Id_as_root": "у корневой и supplement-карточки AEO непустой Id и совпадает после strip и lower()",
+    "different_ActualEducationOrganization_Id_from_root": "оба Id непустые, но токены различаются",
+    "incomparable_Id_missing_on_root_or_supplement_aeo": "у корневой AEO или у карточки в приложении Id отсутствует / пустой после strip"
+  }
+}

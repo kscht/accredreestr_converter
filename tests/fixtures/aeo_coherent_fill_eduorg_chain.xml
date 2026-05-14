@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenData>
+  <Certificates>
+    <Certificate>
+      <Id>aefill-eduorg-chain</Id>
+      <IsFederal>0</IsFederal>
+      <StatusName>Действующее</StatusName>
+      <RegionName>Москва</RegionName>
+      <EduOrgINN>770000000055</EduOrgINN>
+      <EduOrgOGRN>1027700132195</EduOrgOGRN>
+      <ActualEducationOrganization>
+        <Id>shared-aeo-uid</Id>
+        <OGRN>1027700132195</OGRN>
+      </ActualEducationOrganization>
+      <Supplements>
+        <Supplement>
+          <Id>sup-aefill</Id>
+          <ActualEducationOrganization>
+            <Id>shared-aeo-uid</Id>
+            <OGRN>1027700132195</OGRN>
+          </ActualEducationOrganization>
+        </Supplement>
+      </Supplements>
+    </Certificate>
+  </Certificates>
+</OpenData>

@@ -757,6 +757,116 @@ def test_cli_outside_rf_region_default_and_flags(tmp_path: Path) -> None:
     assert len(_read_jsonl(out_explicit)) == 1
 
 
+def test_fill_aeo_coherent_inn_from_eduorg_chain_api(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    stats = c.convert_many(
+        [FIXTURES / "aeo_coherent_fill_eduorg_chain.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+    )
+    row = _read_jsonl(out)[0]
+    sup_aeo = row["Supplements"][0]["ActualEducationOrganization"]
+    root_aeo = row["ActualEducationOrganization"]
+    assert sup_aeo["INN"] == "770000000055"
+    assert root_aeo["INN"] == "770000000055"
+    assert stats.aeo_coherent_fill_supplement_inn >= 1
+    assert stats.aeo_coherent_fill_root_inn >= 1
+
+
+def test_fill_aeo_coherent_root_inn_from_supplement_api(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    c.convert_many(
+        [FIXTURES / "aeo_coherent_fill_root_inn_only.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+    )
+    row = _read_jsonl(out)[0]
+    assert row["ActualEducationOrganization"]["INN"] == "770000000066"
+
+
+def test_fill_aeo_coherent_disabled_via_api(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    c.convert_many(
+        [FIXTURES / "aeo_coherent_fill_eduorg_chain.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+        fill_aeo_coherent_inn_ogrn=False,
+    )
+    row = _read_jsonl(out)[0]
+    assert "INN" not in row["Supplements"][0]["ActualEducationOrganization"]
+
+
+def test_cli_no_fill_aeo_coherent_flag(tmp_path: Path) -> None:
+    out_on = tmp_path / "on.jsonl"
+    p1 = _run_convert_cli(
+        [
+            str(FIXTURES / "aeo_coherent_fill_eduorg_chain.xml"),
+            "-o",
+            str(out_on),
+            "--schema",
+            str(SCHEMA),
+            "--progress-every",
+            "0",
+        ]
+    )
+    assert p1.returncode == 0
+    assert "INN" in _read_jsonl(out_on)[0]["Supplements"][0]["ActualEducationOrganization"]
+
+    out_off = tmp_path / "off.jsonl"
+    p2 = _run_convert_cli(
+        [
+            str(FIXTURES / "aeo_coherent_fill_eduorg_chain.xml"),
+            "-o",
+            str(out_off),
+            "--no-fill-aeo-coherent-inn-ogrn",
+            "--schema",
+            str(SCHEMA),
+            "--progress-every",
+            "0",
+        ]
+    )
+    assert p2.returncode == 0
+    assert "INN" not in _read_jsonl(out_off)[0]["Supplements"][0]["ActualEducationOrganization"]
+
+
+def test_report_contains_aeo_coherent_fill_counts(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    rep = tmp_path / "rep.json"
+    proc = _run_convert_cli(
+        [
+            str(FIXTURES / "aeo_coherent_fill_eduorg_chain.xml"),
+            "-o",
+            str(out),
+            "--report",
+            str(rep),
+            "--schema",
+            str(SCHEMA),
+            "--progress-every",
+            "0",
+        ]
+    )
+    assert proc.returncode == 0
+    data = json.loads(rep.read_text(encoding="utf-8"))
+    fills = data["total"]["aeo_coherent_inn_ogrn_fills"]
+    assert fills["supplement_ActualEducationOrganization_INN"] >= 1
+    assert fills["root_ActualEducationOrganization_INN"] >= 1
+
+
 def test_cli_help() -> None:
     p = _run_convert_cli(["--help"])
     assert p.returncode == 0
@@ -768,6 +878,7 @@ def test_cli_help() -> None:
     assert "--omit-null-keys" in p.stdout
     assert "--include-null-keys" in p.stdout
     assert "--omit-invalid-eduorg-ogrn" in p.stdout
+    assert "--no-fill-aeo-coherent-inn-ogrn" in p.stdout
 
     p2 = subprocess.run(
         [sys.executable, str(ROOT / "download.py"), "--help"],

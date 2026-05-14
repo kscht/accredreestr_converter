@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenData>
+  <Certificates>
+    <Certificate>
+      <Id>aefill-root-from-aeo</Id>
+      <IsFederal>0</IsFederal>
+      <StatusName>Действующее</StatusName>
+      <RegionName>Москва</RegionName>
+      <EduOrgINN>770000000066</EduOrgINN>
+      <EduOrgOGRN>1027700132196</EduOrgOGRN>
+      <ActualEducationOrganization>
+        <Id>root-sup-same</Id>
+        <OGRN>1027700132196</OGRN>
+      </ActualEducationOrganization>
+      <Supplements>
+        <Supplement>
+          <Id>sup1</Id>
+          <ActualEducationOrganization>
+            <Id>root-sup-same</Id>
+            <INN>770000000066</INN>
+            <OGRN>1027700132196</OGRN>
+          </ActualEducationOrganization>
+        </Supplement>
+      </Supplements>
+    </Certificate>
+  </Certificates>
+</OpenData>

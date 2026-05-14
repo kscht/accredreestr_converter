@@ -1,6 +1,10 @@
 {
   "source_jsonl": "out/data-20260403-structure-20160713.jsonl",
-  "description_ru": "Сводка по кандидатам на PK: EduOrgINN, EduOrgOGRN, INN и OGRN в корневом ActualEducationOrganization, а также INN/OGRN в карточках AEO внутри Supplements[]. Для supplement-секции total_lines = число карточек AEO-dict, не число сертификатов. Поле IndividualEntrepreneurINN в отчёт не входит.",
+  "description_ru": "Сводка по кандидатам на PK: EduOrgINN, EduOrgOGRN, INN и OGRN в корневом ActualEducationOrganization, а также INN/OGRN в карточках AEO внутри Supplements[]. Для supplement-секции total_lines = число карточек AEO-dict, не число сертификатов. Поле IndividualEntrepreneurINN в отчёт не входит. Счётчики *same_aeo_Id_as_root* — карточки в приложении с missing_or_empty INN/OGRN, если по полям ActualEducationOrganization.Id и (при двусторонней заполненности) HeadEduOrgId карточка приложения совпадает с корневой AEO; не путать с Id сертификата или Id элемента Supplements[]. Счётчики *borrowable* — остаточные случаи в данном JSONL: при совпадении UID пустое INN/OGRN, для которого по тем же правилам, что fill_aeo_coherent_inn_ogrn в convert.py (по умолчанию), ещё есть донор (nonempty_digits_only_after_clean; для AEO — также **EduOrgINN** / **EduOrgOGRN** на корне сертификата; см. glossary). После конвертации с умолчанию часто нули.",
+  "aeo_uid_fields_compared_ru": [
+    "ActualEducationOrganization.Id — реестровый UID образовательной организации",
+    "ActualEducationOrganization.HeadEduOrgId — UID головной организации; участвует в сравнении только если непустой и на корне, и в приложении"
+  ],
   "certificate_lines_total": 43893,
   "per_certificate": {
     "EduOrgINN": {
@@ -25,12 +29,12 @@
     },
     "root_ActualEducationOrganization_INN": {
       "total_lines": 43893,
-      "missing_or_empty": 1219,
-      "nonempty": 42674,
-      "nonempty_digits_only_after_clean": 42674,
+      "missing_or_empty": 1,
+      "nonempty": 43892,
+      "nonempty_digits_only_after_clean": 43892,
       "nonempty_not_digits_only_after_clean": 0,
-      "would_drop_if_require_nonempty": 1219,
-      "would_drop_if_require_digits_only_after_clean": 1219,
+      "would_drop_if_require_nonempty": 1,
+      "would_drop_if_require_digits_only_after_clean": 1,
       "sample_nonempty_not_digit_only_ids": []
     },
     "root_ActualEducationOrganization_OGRN": {
@@ -42,38 +46,49 @@
       "would_drop_if_require_nonempty": 1,
       "would_drop_if_require_digits_only_after_clean": 1,
       "sample_nonempty_not_digit_only_ids": []
-    }
+    },
+    "root_INN_missing_or_empty_borrowable_from_supplement_aeo_same_uid": 0,
+    "root_OGRN_missing_or_empty_borrowable_from_supplement_aeo_same_uid": 0
   },
   "per_supplement_aeo_card": {
     "supplement_aeo_cards_total": 55240,
     "INN": {
       "total_lines": 55240,
-      "missing_or_empty": 6711,
-      "nonempty": 48529,
-      "nonempty_digits_only_after_clean": 48529,
+      "missing_or_empty": 5493,
+      "nonempty": 49747,
+      "nonempty_digits_only_after_clean": 49747,
       "nonempty_not_digits_only_after_clean": 0,
-      "would_drop_if_require_nonempty": 6711,
-      "would_drop_if_require_digits_only_after_clean": 6711,
+      "would_drop_if_require_nonempty": 5493,
+      "would_drop_if_require_digits_only_after_clean": 5493,
       "sample_nonempty_not_digit_only_ids": []
     },
     "OGRN": {
       "total_lines": 55240,
-      "missing_or_empty": 5497,
-      "nonempty": 49743,
+      "missing_or_empty": 5498,
+      "nonempty": 49742,
       "nonempty_digits_only_after_clean": 49742,
-      "nonempty_not_digits_only_after_clean": 1,
-      "would_drop_if_require_nonempty": 5497,
+      "nonempty_not_digits_only_after_clean": 0,
+      "would_drop_if_require_nonempty": 5498,
       "would_drop_if_require_digits_only_after_clean": 5498,
-      "sample_nonempty_not_digit_only_ids": [
-        "41bdcc5f-7798-1f84-e089-775958e99a6d"
-      ]
-    }
+      "sample_nonempty_not_digit_only_ids": []
+    },
+    "INN_missing_or_empty_with_same_aeo_Id_as_root": 1,
+    "OGRN_missing_or_empty_with_same_aeo_Id_as_root": 1,
+    "INN_missing_same_uid_supplement_could_borrow_from_root_aeo": 0,
+    "OGRN_missing_same_uid_supplement_could_borrow_from_root_aeo": 0
   },
   "glossary_ru": {
     "missing_or_empty": "нет ключа в JSON, null или пустая строка после strip",
     "digits_only_after_clean": "после удаления пробелов и дефисов строка непустая и str.isdigit()",
     "would_drop_if_require_nonempty": "сколько строк (сертификатов) или карточек AEO не пройдут отбор «PK непустой»",
     "would_drop_if_require_digits_only_after_clean": "сколько строк/карточек не пройдут отбор «PK = только цифры после очистки»",
+    "INN_missing_or_empty_with_same_aeo_Id_as_root": "число карточек AEO в Supplements[], где INN missing_or_empty, при этом UID-поля карточки совпадают с корневой ActualEducationOrganization (см. aeo_uid_fields_compared_ru; часто дубликат без ИНН)",
+    "OGRN_missing_or_empty_with_same_aeo_Id_as_root": "то же для OGRN в карточке приложения при том же совпадении UID-полей с корневой AEO",
+    "INN_missing_same_uid_supplement_could_borrow_from_root_aeo": "карточка AEO в Supplements[]: INN missing_or_empty, UID как у корневой AEO, и есть пригодный донор INN: корневая AEO **или** **EduOrgINN** на сертификате (nonempty_digits_only_after_clean; то же, что может заполнить convert.py с fill_aeo_coherent_inn_ogrn)",
+    "OGRN_missing_same_uid_supplement_could_borrow_from_root_aeo": "то же для OGRN: донор — корневая AEO **или** **EduOrgOGRN** на сертификате",
+    "root_INN_missing_or_empty_borrowable_from_supplement_aeo_same_uid": "число строк JSONL (сертификатов), где у корневой AEO INN missing_or_empty, и есть донор: хотя бы одна supplement-карточка AEO с тем же UID и INN nonempty_digits_only_after_clean **или** **EduOrgINN** на корне сертификата (остаток после convert.py с умолчанию — часто 0)",
+    "root_OGRN_missing_or_empty_borrowable_from_supplement_aeo_same_uid": "то же для OGRN корневой AEO: донор supplement с тем же UID **или** **EduOrgOGRN** (остаток после convert.py с умолчанию — часто 0)",
+    "borrowable_donor_value_ru": "донор: ключ есть, значение непустое после strip, после удаления пробелов и дефисов — непустая строка из цифр (как nonempty_digits_only_after_clean в этом отчёте); для полей AEO дополнительно учитываются **EduOrgINN** / **EduOrgOGRN** на корне Certificate как источник INN/OGRN для той же организации; конфликты доноров в convert.py не разрешаются, только учёт",
     "note_convert_identity_ru": "В свежем JSONL от convert.py по умолчанию нецифровые ИНН/КПП/ОГРН из XML не хранятся как строка: ключ отсутствует (omit_null_keys) или null (--include-null-keys); см. non_digit_ids в --report convert.py."
   }
 }
