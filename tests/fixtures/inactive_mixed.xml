@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenData>
+  <Certificates>
+    <Certificate>
+      <Id>act-1</Id>
+      <IsFederal>1</IsFederal>
+      <StatusName>Действующее</StatusName>
+    </Certificate>
+    <Certificate>
+      <Id>inact-1</Id>
+      <IsFederal>0</IsFederal>
+      <StatusName>Недействующее</StatusName>
+    </Certificate>
+  </Certificates>
+</OpenData>

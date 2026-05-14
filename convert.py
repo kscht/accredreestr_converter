@@ -56,6 +56,9 @@ COLLECTION_DEFAULTS: Final[dict[str, tuple[str, ...]]] = {
     "Supplement": ("EducationalPrograms",),
 }
 
+# Записи Certificate с таким StatusName по умолчанию не попадают в JSONL (--include-inactive).
+CERTIFICATE_STATUS_OMITTED_FROM_JSONL: Final[str] = "Недействующее"
+
 # Имя эталонного XML структуры (лежит в specs/xml/)
 DEFAULT_SCHEMA_FILENAME: Final[str] = "data-20160908-structure-20160713.xml"
 
@@ -79,6 +82,8 @@ _TZ_SUFFIX_COLON = re.compile(
 # ±HHMM или ±HH — только если есть компонент времени (есть «:»), иначе ломает 15-04-2019 / 2019-04-15
 _TZ_SUFFIX_NUMERIC = re.compile(r"[+\-](?:\d{4}|\d{2})$", re.IGNORECASE)
 _TIME_FRACTIONAL = re.compile(r"(\d{2}:\d{2}(?::\d{2})?)\.\d+")
+# Коды «XX.XX.XX» (ProgrammCode, UGSCode): в старых выгрузках шесть цифр подряд, напр. «090000»
+_TRIPLET_CODE_DOTTED = re.compile(r"^\d{2}\.\d{2}\.\d{2}$")
 
 
 def _project_root() -> Path:
@@ -124,6 +129,38 @@ def ensure_json_safe(obj: Any) -> Any:
         return [ensure_json_safe(x) for x in obj]
     if isinstance(obj, dict):
         return {k: ensure_json_safe(v) for k, v in obj.items()}
+    return obj
+
+
+def omit_empty_json_values(obj: Any) -> Any:
+    """Убирает ключи с None, пустыми строками и пустыми {} / [] после рекурсии.
+
+    Пустые объекты внутри списков (например элемент только с null-полями) удаляются из списка.
+    """
+    if isinstance(obj, dict):
+        out: dict[str, Any] = {}
+        for k, v in obj.items():
+            if v is None:
+                continue
+            if isinstance(v, str) and not v.strip():
+                continue
+            nv = omit_empty_json_values(v)
+            if isinstance(nv, dict) and len(nv) == 0:
+                continue
+            if isinstance(nv, list) and len(nv) == 0:
+                continue
+            out[k] = nv
+        return out
+    if isinstance(obj, list):
+        items: list[Any] = []
+        for x in obj:
+            nx = omit_empty_json_values(x)
+            if isinstance(nx, dict) and len(nx) == 0:
+                continue
+            if isinstance(nx, list) and len(nx) == 0:
+                continue
+            items.append(nx)
+        return items
     return obj
 
 
@@ -210,6 +247,21 @@ def _element_text(el: etree._Element) -> str:
         return raw.decode("utf-8", errors="replace")
 
 
+def normalize_triplet_code(cleaned: str) -> str:
+    """Компактные шесть цифр → «XX.XX.XX» (ProgrammCode, UGSCode в старых выгрузках); уже с точками не меняем."""
+    if _TRIPLET_CODE_DOTTED.fullmatch(cleaned):
+        return cleaned
+    compact = re.sub(r"[\s\-]", "", cleaned)
+    if len(compact) == 6 and compact.isdigit():
+        return f"{compact[0:2]}.{compact[2:4]}.{compact[4:6]}"
+    return cleaned
+
+
+def normalize_programm_code(cleaned: str) -> str:
+    """То же, что ``normalize_triplet_code`` (историческое имя для тестов и вызовов)."""
+    return normalize_triplet_code(cleaned)
+
+
 def normalize_scalar(
     tag: str, text: str | None, stats: ConversionStats
 ) -> str | bool | None:
@@ -217,6 +269,11 @@ def normalize_scalar(
     cleaned = clean_text(text)
     if cleaned is None:
         return None
+    # Артефакт выгрузки: плейсхолдер вместо пустой квалификации
+    if tag == "Qualification" and cleaned == "0":
+        return None
+    if tag in ("ProgrammCode", "UGSCode"):
+        return normalize_triplet_code(cleaned)
     if tag in BOOL_FIELDS:
         return cast_bool(cleaned, tag, stats)
     if tag in DATE_FIELDS:
@@ -321,12 +378,16 @@ class ConversionStats:
         """Формирует словарь для JSON-отчёта."""
         total_processed = sum(v["processed"] for v in self.per_file.values())
         total_skipped = sum(v["skipped"] for v in self.per_file.values())
+        total_omitted_inactive = sum(
+            int(v.get("omitted_inactive", 0)) for v in self.per_file.values()
+        )
         return {
             "inputs": list(inputs),
             "per_file": dict(self.per_file),
             "total": {
                 "processed": total_processed,
                 "skipped": total_skipped,
+                "omitted_inactive": total_omitted_inactive,
                 "warnings": {
                     "bad_dates": self.bad_dates,
                     "bad_booleans": self.bad_booleans,
@@ -341,7 +402,11 @@ class ConversionStats:
 
 def _init_file_stats(stats: ConversionStats, basename: str) -> None:
     if basename not in stats.per_file:
-        stats.per_file[basename] = {"processed": 0, "skipped": 0}
+        stats.per_file[basename] = {
+            "processed": 0,
+            "skipped": 0,
+            "omitted_inactive": 0,
+        }
 
 
 def convert_one(
@@ -354,7 +419,9 @@ def convert_one(
     progress_every: int,
     limit: int | None,
     strict: bool,
+    omit_inactive: bool = True,
     source_basename: str | None = None,
+    omit_null_keys: bool = False,
 ) -> None:
     """Конвертирует один XML-файл, дописывая строки JSON в открытый файловый объект."""
     _ = schema_path  # зарезервировано для расширений / совместимости API
@@ -387,13 +454,20 @@ def convert_one(
                     "Certificate",
                 )
                 record["_source_file"] = base
-                safe = ensure_json_safe(record)
-                line = json.dumps(safe, ensure_ascii=False) + "\n"
-                out_fh.write(line)
-                processed += 1
-                stats.per_file[base]["processed"] = processed
-                if progress_every and processed % progress_every == 0:
-                    logging.info("Обработано записей из %s: %s", base, processed)
+                if omit_inactive and (
+                    record.get("StatusName") == CERTIFICATE_STATUS_OMITTED_FROM_JSONL
+                ):
+                    stats.per_file[base]["omitted_inactive"] += 1
+                else:
+                    safe = ensure_json_safe(record)
+                    if omit_null_keys:
+                        safe = omit_empty_json_values(safe)
+                    line = json.dumps(safe, ensure_ascii=False) + "\n"
+                    out_fh.write(line)
+                    processed += 1
+                    stats.per_file[base]["processed"] = processed
+                    if progress_every and processed % progress_every == 0:
+                        logging.info("Обработано записей из %s: %s", base, processed)
             except Exception as exc:  # noqa: BLE001 — устойчивость к битым записям
                 skipped += 1
                 stats.broken_records += 1
@@ -425,6 +499,8 @@ def convert_many(
     limit: int | None,
     strict: bool,
     schema_path: Path,
+    omit_inactive: bool = True,
+    omit_null_keys: bool = False,
 ) -> ConversionStats:
     """Конвертирует один или несколько входных XML.
 
@@ -434,6 +510,11 @@ def convert_many(
         merged: True — все входы в один ``output``. False — по одному
             ``stem.jsonl`` в ``out_dir`` на вход (нужно не меньше двух файлов).
         out_dir: Каталог для раздельных выходов при ``merged=False``.
+        omit_inactive: Если True, не записывать в JSONL сертификаты, у которых на корне
+            ``StatusName`` равен константе ``CERTIFICATE_STATUS_OMITTED_FROM_JSONL``
+            («Недействующее»).
+        omit_null_keys: Если True, перед записью строки убрать null, пустые строки
+            и пустые вложенные dict/list (см. ``omit_empty_json_values``).
     """
     if not inputs:
         raise ValueError("Нет входных файлов")
@@ -457,6 +538,8 @@ def convert_many(
                     progress_every=progress_every,
                     limit=limit,
                     strict=strict,
+                    omit_inactive=omit_inactive,
+                    omit_null_keys=omit_null_keys,
                 )
     else:
         if output is None:
@@ -473,6 +556,8 @@ def convert_many(
                     progress_every=progress_every,
                     limit=limit,
                     strict=strict,
+                    omit_inactive=omit_inactive,
+                    omit_null_keys=omit_null_keys,
                 )
 
     return stats
@@ -542,10 +627,27 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         help="Прервать выполнение при ошибке обработки записи",
     )
     p.add_argument(
+        "--include-inactive",
+        action="store_true",
+        help=(
+            "Включить в JSONL записи со StatusName «Недействующее» на корне Certificate "
+            "(по умолчанию они пропускаются)"
+        ),
+    )
+    p.add_argument(
         "--report",
         type=Path,
         default=None,
         help="Путь к JSON-файлу со сводной статистикой",
+    )
+    p.add_argument(
+        "--omit-null-keys",
+        action="store_true",
+        help=(
+            "Не писать в JSON ключи со значением null, пустой строкой и пустыми "
+            "вложенными объектами/массивами после очистки (меньше размер файла; "
+            "отсутствие ключа эквивалентно null для необязательных полей)."
+        ),
     )
     return p.parse_args(argv)
 
@@ -603,6 +705,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             limit=args.limit,
             strict=args.strict,
             schema_path=schema_path.resolve(),
+            omit_inactive=not args.include_inactive,
+            omit_null_keys=args.omit_null_keys,
         )
     except ValueError as ve:
         logging.error("%s", ve)

@@ -152,6 +152,85 @@ def test_id_numbers_are_strings() -> None:
     assert stats.non_digit_ids == 1
 
 
+def test_qualification_placeholder_zero_becomes_none() -> None:
+    stats = c.ConversionStats()
+    assert c.normalize_scalar("Qualification", "0", stats) is None
+    assert c.normalize_scalar("Qualification", " Бакалавр ", stats) == "Бакалавр"
+    assert c.normalize_scalar("ProgrammName", "0", stats) == "0"
+
+
+def test_programm_code_old_six_digits_to_dotted() -> None:
+    stats = c.ConversionStats()
+    assert c.normalize_programm_code("031501") == "03.15.01"
+    assert c.normalize_programm_code("050100") == "05.01.00"
+    assert c.normalize_scalar("ProgrammCode", "031501", stats) == "03.15.01"
+    assert c.normalize_scalar("ProgrammCode", "03.15.01", stats) == "03.15.01"
+    assert c.normalize_scalar("ProgrammCode", "03 15 01", stats) == "03.15.01"
+    assert c.normalize_scalar("ProgrammCode", "03-15-01", stats) == "03.15.01"
+
+
+def test_programm_code_non_standard_passthrough() -> None:
+    stats = c.ConversionStats()
+    assert c.normalize_scalar("ProgrammCode", "12345", stats) == "12345"
+    assert c.normalize_scalar("ProgrammCode", "1234567", stats) == "1234567"
+    assert c.normalize_scalar("ProgrammCode", "спецкод", stats) == "спецкод"
+
+
+def test_ugs_code_old_six_digits_to_dotted() -> None:
+    stats = c.ConversionStats()
+    assert c.normalize_triplet_code("090000") == "09.00.00"
+    assert c.normalize_scalar("UGSCode", "090000", stats) == "09.00.00"
+    assert c.normalize_scalar("UGSCode", "09.00.00", stats) == "09.00.00"
+    assert c.normalize_scalar("UGSCode", "09 00 00", stats) == "09.00.00"
+
+
+def test_omit_empty_json_values() -> None:
+    raw: dict = {
+        "_source_file": "x.xml",
+        "Id": "1",
+        "A": None,
+        "B": "",
+        "C": "  ",
+        "D": {"x": None, "y": 1},
+        "E": [],
+        "F": {"z": {}},
+        "G": [{"a": None}, {"b": 2}],
+        "H": False,
+    }
+    out = c.omit_empty_json_values(raw)
+    assert out["_source_file"] == "x.xml"
+    assert out["Id"] == "1"
+    assert "A" not in out and "B" not in out and "C" not in out
+    assert out["D"] == {"y": 1}
+    assert "E" not in out
+    assert "F" not in out
+    assert out["G"] == [{"b": 2}]
+    assert out["H"] is False
+
+
+def test_convert_many_omit_null_keys_strips_null_keys(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    c.convert_many(
+        [FIXTURES / "empty_fields.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+        omit_null_keys=True,
+    )
+    row = _read_jsonl(out)[0]
+    assert row["Id"] == "ef-1"
+    assert row["IsFederal"] is True
+    assert "RegNumber" not in row
+    assert "StatusName" not in row
+    assert "TypeName" not in row
+    assert "RegionName" not in row
+    assert "IssueDate" not in row
+
+
 def test_empty_tag_becomes_null(tmp_path: Path) -> None:
     out = tmp_path / "o.jsonl"
     c.convert_many(
@@ -435,10 +514,82 @@ def test_streaming_memory(tmp_path: Path) -> None:
     assert len(_read_jsonl(out)) == 5000
 
 
+def test_omit_inactive_certificates_by_default(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    stats = c.convert_many(
+        [FIXTURES / "inactive_mixed.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+    )
+    rows = _read_jsonl(out)
+    assert len(rows) == 1
+    assert rows[0]["Id"] == "act-1"
+    assert stats.per_file["inactive_mixed.xml"]["omitted_inactive"] == 1
+
+
+def test_include_inactive_certificates_when_disabled_filter(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    stats = c.convert_many(
+        [FIXTURES / "inactive_mixed.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+        omit_inactive=False,
+    )
+    rows = _read_jsonl(out)
+    assert len(rows) == 2
+    assert {r["Id"] for r in rows} == {"act-1", "inact-1"}
+    assert stats.per_file["inactive_mixed.xml"]["omitted_inactive"] == 0
+
+
+def test_cli_include_inactive_flag(tmp_path: Path) -> None:
+    out_def = tmp_path / "def.jsonl"
+    p = _run_convert_cli(
+        [
+            str(FIXTURES / "inactive_mixed.xml"),
+            "-o",
+            str(out_def),
+            "--schema",
+            str(SCHEMA),
+            "--progress-every",
+            "0",
+        ]
+    )
+    assert p.returncode == 0
+    assert len(_read_jsonl(out_def)) == 1
+
+    out_all = tmp_path / "all.jsonl"
+    p2 = _run_convert_cli(
+        [
+            str(FIXTURES / "inactive_mixed.xml"),
+            "-o",
+            str(out_all),
+            "--include-inactive",
+            "--schema",
+            str(SCHEMA),
+            "--progress-every",
+            "0",
+        ]
+    )
+    assert p2.returncode == 0
+    assert len(_read_jsonl(out_all)) == 2
+
+
 def test_cli_help() -> None:
     p = _run_convert_cli(["--help"])
     assert p.returncode == 0
     assert "--merged" in p.stdout
+    assert "--include-inactive" in p.stdout
+    assert "--omit-null-keys" in p.stdout
 
     p2 = subprocess.run(
         [sys.executable, str(ROOT / "download.py"), "--help"],

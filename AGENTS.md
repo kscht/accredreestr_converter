@@ -24,7 +24,7 @@
 
 | Файл | Роль |
 |------|------|
-| `convert.py` | Парсинг, типы, CLI, `convert_many`, статистика |
+| `convert.py` | Парсинг, типы, CLI, `convert_many`, статистика; нормализация **`ProgrammCode`** и **`UGSCode`** (компактные шесть цифр → `XX.XX.XX`) |
 | `tools/generate_field_labels.py` | JSON `specs/field_labels.json`: путь `Certificate/…` → русская подпись из схемы |
 | `specs/field_labels.json` | Сгенерированный словарь подписей для UI (`python tools/generate_field_labels.py`) |
 | `specs/kg/mapping.json` | Узлы/рёбра для Knowledge Graph из строк JSONL |
@@ -37,6 +37,7 @@
 | `tools/sample_jsonl_lines.py` | Подвыборка N строк из большого JSONL (резервуар, один проход); пример: `out/sample_live_5000.jsonl` |
 | `tools/generate_test_jsonl_samples.py` | Набор случайных JSONL 10/50/100/500/5000 строк в `examples/jsonl_samples/` |
 | `tools/analyze_aeo_cert_vs_supplement.py` | Сводка AEO корень vs приложения; детерминированные `sample_*.jsonl` (первые N расхождений по файлу) в `examples/jsonl_samples_aeo_mismatch/`; `--no-samples` только stdout |
+| `tools/extract_unique_educational_programs.py` | Уникальные программы без `Id` и без полей среза (`TypeName`, `EduNormativePeriod`, статусы аккредитации программы); **непустой `UGSName`**; **`Qualification`** по умолчанию может быть пустой (флаг **`--require-qualification`** — только с непустой квалификацией); канонизация хвоста `Qualification`; выход **по убыванию длины `Qualification`**, при равенстве — **`UGSCode`** и стабильный хвост → `examples/educational_programs_unique.jsonl` (обычно вход — полный JSONL после `convert.py --include-inactive`) |
 | `docs/cypher_export.md` | JSONL → Cypher (Neo4j) по `specs/kg/mapping.json` |
 | `examples/accred_graph_preview.cypher` | Мини-пример графа (1 сертификат) для Neo4j Browser |
 | `cypher_convert/export_cypher.py` | CLI: `python -m cypher_convert.export_cypher …` |
@@ -69,13 +70,20 @@
 - **Несколько** + **`--merged`**: один файл, обязателен **`-o`**.
 - **`--merged`** при одном входе — ошибка.
 
-Опции: `--schema`, `--progress-every` (default 10000, `0` = тише), `--limit` (на каждый вход), **`--log-file`** (доп. лог; без него только stderr), `--report` (JSON-статистика), `--strict`.
+Опции: `--schema`, `--progress-every` (default 10000, `0` = тише), `--limit` (на каждый вход), **`--log-file`** (доп. лог; без него только stderr), `--report` (JSON-статистика; в `total` есть **`omitted_inactive`** — ненулевой только без **`--include-inactive`**), `--strict`, **`--include-inactive`**, **`--omit-null-keys`** (не писать в JSON ключи с `null`/пустыми строками и пустыми вложенными `{}`/`[]` после нормализации — компактнее файл).
+
+По умолчанию **без** `--include-inactive` такие сертификаты **пропускаются** (`omitted_inactive` в отчёте). Для аналитики и справочников по всем строкам реестра используйте **`--include-inactive`**.
 
 В каждой записи: **`_source_file`** — имя исходного XML.
 
 ## Решения (`Decisions`) без `Id` в JSONL
 
 Пустой идентификатор документа в выгрузке → в JSON `Id: null` у элемента `Decisions[]`; **сертификат и организация в строке не теряются**. Импорт в SQL/DuckDB **не вставляет** такую позицию в таблицу `decisions` (нужен PK документа). См. `docs/sql_convert.md`, `docs/knowledge_graph.md`.
+
+## Нормализация кодов в `convert.py`
+
+- **`ProgrammCode`**, **`UGSCode`**: если после `clean_text` значение уже вида **`XX.XX.XX`**, оставляем; иначе убираются пробелы/дефисы и при ровно **шести цифрах** подряд вставляются точки (напр. `031501` → `03.15.01`, `090000` → `09.00.00`).
+- **`Qualification`**: строка **`0`** (плейсхолдер) → **`null`**.
 
 ## Ошибки в полях (что в JSONL)
 
