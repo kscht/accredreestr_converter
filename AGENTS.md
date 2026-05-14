@@ -20,7 +20,7 @@
 
 ## Главные файлы
 
-Каталог **`specs/`** — маппинги, JSON Schema, эталонный XML, `field_labels.json`. Каталог **`tools/`** — скрипты `generate_*`.
+Каталог **`specs/`** — маппинги, JSON Schema, эталонный XML, `field_labels.json`. Каталог **`tools/`** — перегенерация, выборки, аналитика и справочники (см. таблицу).
 
 | Файл | Роль |
 |------|------|
@@ -38,6 +38,7 @@
 | `tools/generate_test_jsonl_samples.py` | Набор случайных JSONL 10/50/100/500/5000 строк в `examples/jsonl_samples/` |
 | `tools/analyze_aeo_cert_vs_supplement.py` | Сводка AEO корень vs приложения; детерминированные `sample_*.jsonl` (первые N расхождений по файлу) в `examples/jsonl_samples_aeo_mismatch/`; `--no-samples` только stdout |
 | `tools/extract_unique_educational_programs.py` | Уникальные программы без `Id` и без полей среза (`TypeName`, `EduNormativePeriod`, статусы аккредитации программы); **непустой `UGSName`**; **`Qualification`** по умолчанию может быть пустой (флаг **`--require-qualification`** — только с непустой квалификацией); канонизация хвоста `Qualification`; выход **по убыванию длины `Qualification`**, при равенстве — **`UGSCode`** и стабильный хвост → `examples/educational_programs_unique.jsonl` (обычно вход — полный JSONL после `convert.py --include-inactive`) |
+| `tools/scan_jsonl_placeholder_scalars.py` | Потоковый подсчёт скалярных «плейсхолдеров» в JSONL (нули, тире, маркеры «нет данных» и т.п.) по JSON-путям; см. `--help` |
 | `docs/cypher_export.md` | JSONL → Cypher (Neo4j) по `specs/kg/mapping.json` |
 | `examples/accred_graph_preview.cypher` | Мини-пример графа (1 сертификат) для Neo4j Browser |
 | `cypher_convert/export_cypher.py` | CLI: `python -m cypher_convert.export_cypher …` |
@@ -62,6 +63,11 @@
 | `tests/test_import_sql_live_sample.py` | Опционально: импорт `out/sample_live_5000.jsonl` при **`ACCRED_SQL_LIVE_SAMPLE=1`** |
 | `tests/test_import_parquet_live_sample.py` | Опционально: Parquet с той же выборкой при **`ACCRED_PARQUET_LIVE_SAMPLE=1`** |
 | `tests/test_import_duckdb.py` | Импорт JSONL в DuckDB и Parquet (нужен пакет `duckdb`) |
+| `tests/test_kg_mapping.py` | Структура и `format_version` в `specs/kg/mapping.json` |
+| `tests/test_analyze_aeo_cert_vs_supplement.py` | CLI сводки AEO |
+| `tests/test_generate_test_jsonl_samples.py` | Генерация `examples/jsonl_samples/sample_*.jsonl` |
+| `tests/test_extract_unique_educational_programs.py` | Справочник уникальных программ |
+| `tests/test_scan_jsonl_placeholder_scalars.py` | Сканер плейсхолдеров в JSONL |
 
 ## CLI `convert.py`
 
@@ -112,6 +118,7 @@ pytest
 ## Каталоги и gitignore
 
 - **`specs/`** — маппинги KG/SQL/Prisma, JSON Schema, эталонный XML, `field_labels.json` (в git).
-- **`tools/`** — скрипты перегенерации.
+- **`docs/diagrams/`** — диаграммы (исходники Mermaid, экспорт изображений; в git).
+- **`tools/`** — перегенерация (`generate_*`), выборки, аналитика и справочники (см. таблицу выше).
 - **`data/*.xml`** — не в репозитории (скачанные выгрузки).
 - **`out/`** — не в репозитории (JSONL, логи, отчёты `convert.py`). Повторный запуск с тем же именем файла **перезаписывает** его (`"w"`).

@@ -37,7 +37,8 @@ python convert.py data/data-*-structure-*.xml \
 ## Структура репозитория
 
 - **`specs/`** — машиночитаемые артефакты: маппинги KG/SQL/Prisma, JSON Schema, эталонный XML структуры, `field_labels.json`.
-- **`tools/`** — скрипты перегенерации (`generate_*`) из `specs/` и констант `convert.py`.
+- **`tools/`** — перегенерация (`generate_*`), случайные подвыборки JSONL, аналитика (`analyze_*`, `scan_*`), справочник программ (`extract_*`); см. таблицу ниже.
+- **`docs/diagrams/`** — диаграммы (исходники и экспорт).
 - **Корень** — основной CLI (`convert.py`, `download.py`, `scrape_opendata.py`), пакеты `sql_convert/`, `parquet_convert/`, `cypher_convert/`.
 
 | Путь | Назначение |
@@ -54,7 +55,9 @@ python convert.py data/data-*-structure-*.xml \
 | `tools/generate_json_schema.py` | Перегенерация JSON Schema |
 | `tools/sample_jsonl_lines.py` | Случайная подвыборка N строк из большого JSONL (резервуар, один проход) |
 | `tools/generate_test_jsonl_samples.py` | Набор выборок 10/50/100/500/5000 строк → `examples/jsonl_samples/sample_*.jsonl` |
+| `tools/analyze_aeo_cert_vs_supplement.py` | Сводка несовпадений AEO (корень сертификата vs приложения); образцы в `examples/jsonl_samples_aeo_mismatch/sample_*.jsonl` |
 | `tools/extract_unique_educational_programs.py` | Справочник уникальных `EducationalProgram` → `examples/educational_programs_unique.jsonl` (вход — JSONL из `convert.py`; сортировка по длине `Qualification` по убыванию, затем `UGSCode`) |
+| `tools/scan_jsonl_placeholder_scalars.py` | Подсчёт скалярных плейсхолдеров в JSONL по путям (нули, тире, «н/д» и т.п.); см. `--help` |
 | `docs/cypher_export.md` | JSONL → Cypher (Neo4j) по KG-mapping |
 | `cypher_convert/export_cypher.py` | Экспорт `.cypher`: `python -m cypher_convert.export_cypher …` |
 | `docs/sql_convert.md` | Пояснения к SQL: ключи, вложенность, типы |
@@ -196,7 +199,7 @@ python -m parquet_convert.import_duckdb out/data.jsonl --parquet-dir out/parquet
 
 - Нормализация пробелов и невидимых символов (`clean_text`), `ensure_json_safe` перед `json.dumps`.
 - **`ProgrammCode`**, **`UGSCode`**: старый формат из шести цифр подряд (например `031501`, `090000`) приводится к виду **`XX.XX.XX`**; уже разделённые точками значения не меняются.
-- **`Qualification`**: плейсхолдер **`0`** в XML → **`null`** в JSON.
+- **`Qualification`**: плейсхолдер **`0`** в XML → **`null`** в JSON. Полный обзор похожих скаляров по файлу: **`python tools/scan_jsonl_placeholder_scalars.py путь.jsonl`** (см. `--help`, **`--limit`**).
 - **Даты:** распространённые форматы; таймзона (`Z`, `±HH:MM`, при наличии `:` в строке — ещё `±HH`, `±HHMM`, напр. `2010-06-18 00:00:00+04`). Успех → строка **`YYYY-MM-DD`**; иначе в JSON остаётся **очищенная строка** + `WARNING`.
 - **Булевы:** не распознано → **`null`** + `WARNING`.
 - **ИНН/КПП/ОГРН:** после очистки не только цифры → в JSON **строка** как есть + `WARNING`.

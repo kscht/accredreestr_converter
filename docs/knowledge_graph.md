@@ -45,3 +45,7 @@
 ## Параллельно: SQL, Prisma и DuckDB/Parquet
 
 Та же декомпозиция строки описана для реляционной загрузки: [`specs/sql/mapping.json`](../specs/sql/mapping.json), [`sql_convert.md`](sql_convert.md). Схема Prisma генерируется из того же SQL-mapping: [`specs/prisma/mapping.json`](../specs/prisma/mapping.json), [`prisma.md`](prisma.md). Для DuckDB и Parquet — [`parquet_duckdb.md`](parquet_duckdb.md). Для проверки формы JSON — [`specs/json-schema/certificate-line.schema.json`](../specs/json-schema/certificate-line.schema.json), [`json_schema.md`](json_schema.md). Для **Cypher**: Neo4j напрямую; **Kuzu** — встраиваемый движок с подмножеством Cypher, нужна предварительная схема и учёт отличий от Neo4j ([`cypher_export.md`](cypher_export.md)). Модуль: `cypher_convert.export_cypher`.
+
+## Диаграммы
+
+Черновики и экспорт схем пайплайна (Mermaid, изображения) — в **[`diagrams/`](diagrams/)**. Реляционная схема БД по SQL-mapping: **[`diagrams/sql_schema_er.md`](diagrams/sql_schema_er.md)** (Mermaid `erDiagram`, рендер на GitHub).
