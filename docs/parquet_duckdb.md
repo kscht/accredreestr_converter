@@ -1,6 +1,6 @@
 # JSONL → DuckDB и Parquet
 
-Нормализованная загрузка строк JSONL (выход `convert.py`) в **DuckDB** и опциональный экспорт таблиц в **Parquet**. Источник схемы тот же, что для SQL-импорта: **[`../specs/sql/mapping.json`](../specs/sql/mapping.json)** (см. [`sql_convert.md`](sql_convert.md)). Проекция строки совпадает с `sql_convert` (в т.ч. элементы `Decisions[]` **без** непустого `Id` не попадают в таблицу **`decisions`**, сертификат импортируется; в **`educational_programs`** строки различаются **`program_slot`**, повтор **`program_id`** из реестра допустим).
+Нормализованная загрузка строк JSONL (выход **`convert.py`**, по умолчанию **компактный** JSON без лишних `null`/пустых коллекций) в **DuckDB** и опциональный экспорт таблиц в **Parquet**. Источник схемы тот же, что для SQL-импорта: **[`../specs/sql/mapping.json`](../specs/sql/mapping.json)** (см. [`sql_convert.md`](sql_convert.md)). Проекция строки совпадает с `sql_convert` (в т.ч. элементы `Decisions[]` **без** непустого `Id` не попадают в таблицу **`decisions`**, сертификат импортируется; в **`educational_programs`** строки различаются **`program_slot`**, повтор **`program_id`** из реестра допустим).
 
 ## CLI
 

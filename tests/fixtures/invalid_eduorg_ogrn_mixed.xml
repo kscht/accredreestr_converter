@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenData>
+  <Certificates>
+    <Certificate>
+      <Id>ogrn-good-digits</Id>
+      <IsFederal>1</IsFederal>
+      <EduOrgOGRN>1027700132195</EduOrgOGRN>
+    </Certificate>
+    <Certificate>
+      <Id>ogrn-good-spaced</Id>
+      <IsFederal>0</IsFederal>
+      <EduOrgOGRN>1027 700 132 195</EduOrgOGRN>
+    </Certificate>
+    <Certificate>
+      <Id>ogrn-empty</Id>
+      <IsFederal>1</IsFederal>
+      <EduOrgOGRN></EduOrgOGRN>
+    </Certificate>
+    <Certificate>
+      <Id>ogrn-missing-tag</Id>
+      <IsFederal>0</IsFederal>
+    </Certificate>
+    <Certificate>
+      <Id>ogrn-bad-alpha</Id>
+      <IsFederal>1</IsFederal>
+      <EduOrgOGRN>1027-X-132195</EduOrgOGRN>
+    </Certificate>
+  </Certificates>
+</OpenData>

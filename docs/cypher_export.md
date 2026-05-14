@@ -1,6 +1,6 @@
 # Экспорт в Cypher (Neo4j, Kuzu и др.)
 
-CLI читает **JSONL** (выход `convert.py`) и пишет файл **`.cypher`**: операторы `MERGE` для узлов и рёбер по **[`../specs/kg/mapping.json`](../specs/kg/mapping.json)** (те же метки узлов, что в `node_kinds.kind`, и типы рёбер в верхнем регистре, см. ниже).
+CLI читает **JSONL** (выход **`convert.py`**, по умолчанию компактные строки) и пишет файл **`.cypher`**: операторы `MERGE` для узлов и рёбер по **[`../specs/kg/mapping.json`](../specs/kg/mapping.json)** (те же метки узлов, что в `node_kinds.kind`, и типы рёбер в верхнем регистре, см. ниже).
 
 ## Запуск
 

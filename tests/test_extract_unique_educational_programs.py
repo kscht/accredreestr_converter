@@ -2,12 +2,21 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+
+_extract_spec = importlib.util.spec_from_file_location(
+    "extract_unique_educational_programs",
+    ROOT / "tools" / "extract_unique_educational_programs.py",
+)
+assert _extract_spec and _extract_spec.loader
+extract_uep = importlib.util.module_from_spec(_extract_spec)
+_extract_spec.loader.exec_module(extract_uep)
 
 
 def test_extract_unique_programs_dedupes_by_content_not_id(tmp_path: Path) -> None:
@@ -293,6 +302,23 @@ def test_extract_skips_qualification_empty_after_normalization_when_required(tmp
     assert "Пропущено (нет Qualification, режим --require-qualification): 1" in r.stderr
 
 
+def test_verify_output_invariants_catches_missing_anchor_code() -> None:
+    seen = {"x": {"ProgrammCode": "09.02.01", "UGSName": "Информатика и вычислительная техника"}}
+    hits = {"09.02.07": 3}
+    err = extract_uep._verify_output_invariants(seen, hits)
+    assert err is not None
+    assert "09.02.07" in err
+
+
+def test_verify_output_invariants_ok_when_anchor_present() -> None:
+    row = {
+        "ProgrammCode": "09.02.07",
+        "UGSName": "Информатика и вычислительная техника",
+        "Qualification": None,
+    }
+    assert extract_uep._verify_output_invariants({"a": row}, {"09.02.07": 5}) is None
+
+
 def test_extract_includes_program_with_null_qualification_by_default(tmp_path: Path) -> None:
     """Как в ИС ГА для части СПО: UGSName есть, Qualification null — строка попадает в справочник."""
     spo = {
@@ -329,7 +355,10 @@ def test_extract_includes_program_with_null_qualification_by_default(tmp_path: P
     assert "Пропущено (нет Qualification, режим --require-qualification): 0" in r.stderr
 
 
-def test_extract_output_sorted_by_qualification_length_then_ugs(tmp_path: Path) -> None:
+def test_extract_output_sorted_by_qualification_length_then_programm_code(
+    tmp_path: Path,
+) -> None:
+    """При равной длине Qualification — сначала ProgrammCode, затем UGSCode (пустой UGS — в конец)."""
     base = {"EduLevelName": "ВО", "ProgrammCode": None, "Qualification": "Бакалавр"}
     p02 = {
         "Id": "i02",
@@ -378,7 +407,48 @@ def test_extract_output_sorted_by_qualification_length_then_ugs(tmp_path: Path) 
     assert [x.get("UGSCode") for x in rows] == ["01.00.00", "02.00.00", None]
 
 
-def test_extract_output_primary_sort_by_qualification_length(tmp_path: Path) -> None:
+def test_extract_sort_programm_code_before_ugs_when_same_qualification_length(
+    tmp_path: Path,
+) -> None:
+    """Прежний номенклатурный порядок: при равной длине квалификации сначала ProgrammCode, потом UGSCode."""
+    ql = "Бакалавр"
+    base = {"EduLevelName": "ВО", "UGSName": "Укрупнённая", "Qualification": ql}
+    # При сортировке сначала по UGS шло бы b (01...) затем a (02...); по ProgrammCode — a затем b.
+    a = {
+        "Id": "pc_first",
+        **base,
+        "UGSCode": "02.00.00",
+        "ProgrammCode": "01.01.01",
+        "ProgrammName": "P1",
+    }
+    b = {
+        "Id": "ugs_would_be_first",
+        **base,
+        "UGSCode": "01.00.00",
+        "ProgrammCode": "09.09.09",
+        "ProgrammName": "P2",
+    }
+    cert = {"Id": "c", "Supplements": [{"Id": "s", "EducationalPrograms": [b, a]}]}
+    inp = tmp_path / "in.jsonl"
+    inp.write_text(json.dumps(cert, ensure_ascii=False) + "\n", encoding="utf-8")
+    outp = tmp_path / "out.jsonl"
+    r = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "tools" / "extract_unique_educational_programs.py"),
+            str(inp),
+            "-o",
+            str(outp),
+        ],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert r.returncode == 0, r.stderr
+    rows = [json.loads(x) for x in outp.read_text(encoding="utf-8").strip().splitlines()]
+    assert len(rows) == 2
+    assert [x["Id"] for x in rows] == ["pc_first", "ugs_would_be_first"]
     """Сначала по убыванию длины Qualification; пустое поле — в конец по длине."""
     base = {
         "EduLevelName": "ВО",

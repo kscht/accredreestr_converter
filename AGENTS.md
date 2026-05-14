@@ -20,7 +20,7 @@
 
 ## Главные файлы
 
-Каталог **`specs/`** — маппинги, JSON Schema, эталонный XML, `field_labels.json`. Каталог **`tools/`** — перегенерация, выборки, аналитика и справочники (см. таблицу).
+Каталог **`specs/`** — маппинги, JSON Schema, эталонный XML, `field_labels.json`. Каталог **`tools/`** — перегенерация, выборки, аналитика и справочники (см. таблицу и **[`docs/tools.md`](docs/tools.md)**).
 
 | Файл | Роль |
 |------|------|
@@ -38,8 +38,12 @@
 | `tools/sample_jsonl_lines.py` | Подвыборка N строк из большого JSONL (резервуар, один проход); пример: `out/sample_live_5000.jsonl` |
 | `tools/generate_test_jsonl_samples.py` | Набор случайных JSONL 10/50/100/500/5000 строк в `examples/jsonl_samples/` |
 | `tools/analyze_aeo_cert_vs_supplement.py` | Сводка AEO корень vs приложения; детерминированные `sample_*.jsonl` (первые N расхождений по файлу) в `examples/jsonl_samples_aeo_mismatch/`; `--no-samples` только stdout |
-| `tools/extract_unique_educational_programs.py` | Уникальные программы без `Id` и без полей среза (`TypeName`, `EduNormativePeriod`, статусы аккредитации программы); **непустой `UGSName`**; **`Qualification`** по умолчанию может быть пустой (флаг **`--require-qualification`** — только с непустой квалификацией); канонизация хвоста `Qualification`; выход **по убыванию длины `Qualification`**, при равенстве — **`UGSCode`** и стабильный хвост → `examples/educational_programs_unique.jsonl` (обычно вход — полный JSONL после `convert.py --include-inactive`) |
+| `tools/extract_unique_educational_programs.py` | Уникальные программы без `Id` и без полей среза (`TypeName`, `EduNormativePeriod`, статусы аккредитации программы); **непустой `UGSName`**; **`Qualification`** по умолчанию может быть пустой (флаг **`--require-qualification`** — только с непустой квалификацией); канонизация хвоста `Qualification`; выход **по убыванию длины `Qualification`**, при равенстве — **`ProgrammCode`** (триплет по числам), затем **`UGSCode`**, имя и отпечаток → `examples/educational_programs_unique.jsonl` (вход — JSONL из **`convert.py`** с теми же **умолчаниями**, что у CLI: без «Недействующее», без псевдорегиона «за пределами РФ», компактный JSON без `null`/пустых `[]`/`{}`) |
+| `tools/audit_dataset_identity_fields.py` | Сводка по **EduOrgINN**, **EduOrgOGRN**, **INN**/**OGRN** в корневом и вложенных **ActualEducationOrganization**; поля **`would_drop_if_require_*`** для оценки потерь при PK; по умолчанию `examples/dataset_identity_fields_audit.json` |
+| `tools/audit_dataset_status.py` | Гистограммы корневых **`StatusName`** / **`TypeName`**; по умолчанию `examples/dataset_status_audit.json` |
+| `tools/audit_dataset_region.py` | Гистограмма **`RegionName`**, счётчик псевдорегиона «за пределами РФ»; по умолчанию `examples/dataset_region_audit.json` |
 | `tools/scan_jsonl_placeholder_scalars.py` | Потоковый подсчёт скалярных «плейсхолдеров» в JSONL (нули, тире, маркеры «нет данных» и т.п.) по JSON-путям; см. `--help` |
+| `docs/tools.md` | Обзор **`tools/`**, аудиты, выборки; умолчания **`convert.py`** |
 | `docs/cypher_export.md` | JSONL → Cypher (Neo4j) по `specs/kg/mapping.json` |
 | `examples/accred_graph_preview.cypher` | Мини-пример графа (1 сертификат) для Neo4j Browser |
 | `cypher_convert/export_cypher.py` | CLI: `python -m cypher_convert.export_cypher …` |
@@ -69,6 +73,9 @@
 | `tests/test_analyze_aeo_cert_vs_supplement.py` | CLI сводки AEO |
 | `tests/test_generate_test_jsonl_samples.py` | Генерация `examples/jsonl_samples/sample_*.jsonl` |
 | `tests/test_extract_unique_educational_programs.py` | Справочник уникальных программ |
+| `tests/test_audit_dataset_identity_fields.py` | Аудит полей идентичности (ИНН/ОГРН) для PK |
+| `tests/test_audit_dataset_status.py` | Аудит StatusName/TypeName |
+| `tests/test_audit_dataset_region.py` | Аудит RegionName |
 | `tests/test_scan_jsonl_placeholder_scalars.py` | Сканер плейсхолдеров в JSONL |
 
 ## CLI `convert.py`
@@ -78,9 +85,9 @@
 - **Несколько** + **`--merged`**: один файл, обязателен **`-o`**.
 - **`--merged`** при одном входе — ошибка.
 
-Опции: `--schema`, `--progress-every` (default 10000, `0` = тише), `--limit` (на каждый вход), **`--log-file`** (доп. лог; без него только stderr), `--report` (JSON-статистика; в `total` есть **`omitted_inactive`** — ненулевой только без **`--include-inactive`**), `--strict`, **`--include-inactive`**, **`--omit-null-keys`** (не писать в JSON ключи с `null`/пустыми строками и пустыми вложенными `{}`/`[]` после нормализации — компактнее файл).
+Опции: `--schema`, `--progress-every` (default 10000, `0` = тише), `--limit` (на каждый вход), **`--log-file`** (доп. лог; без него только stderr), `--report` (JSON-статистика; в `total` есть **`omitted_inactive`**, **`omitted_outside_rf_region`** и **`omitted_invalid_eduorg_ogrn`** — **`omitted_inactive`** и **`omitted_outside_rf_region`** ненулевые по умолчанию, если в XML были соответствующие строки; **`omitted_invalid_eduorg_ogrn`** — только при **`--omit-invalid-eduorg-ogrn`**), `--strict`, **`--include-inactive`** (полный снимок по статусу, как в XML), **`--omit-inactive`** (избыточен: то же, что умолчание), **`--include-outside-rf-region`** (полный снимок по региону), **`--omit-outside-rf-region`** (избыточен: то же, что умолчание), **`--omit-invalid-eduorg-ogrn`**, **`--include-null-keys`** (полный JSON с `null` и пустыми `[]`/`{}`), **`--omit-null-keys`** (избыточен: то же, что умолчание).
 
-По умолчанию **без** `--include-inactive` такие сертификаты **пропускаются** (`omitted_inactive` в отчёте). Для аналитики и справочников по всем строкам реестра используйте **`--include-inactive`**.
+По умолчанию в JSONL **нет** строк со **`StatusName` «Недействующее»** на корне (`omitted_inactive`). С **`--include-inactive`** попадают и они. По умолчанию **нет** строк с псевдорегионом «за пределами РФ» на корневом `RegionName` (`omitted_outside_rf_region`); с **`--include-outside-rf-region`** — как в XML. С **`--omit-invalid-eduorg-ogrn`** не пишутся сертификаты без валидного корневого `EduOrgOGRN` (критерий «только цифры после очистки» как в `tools/audit_dataset_identity_fields.py`, блок `per_certificate.EduOrgOGRN`; `omitted_invalid_eduorg_ogrn` в отчёте). По умолчанию ключи с `null` и пустые вложенные `{}`/`[]` в JSON **не пишутся**; **`--include-null-keys`** возвращает полный набор полей.
 
 В каждой записи JSONL **нет** служебного поля с именем файла XML: первичный ключ в SQL — **`certificate_id`** (корневой `Id`). Провенанс снимка реестра при необходимости добавляйте **вне конвертера** (отдельная колонка при загрузке, префикс в хранилище и т.п.).
 
@@ -97,7 +104,7 @@
 
 - **Дата** не распознана → **строка** (после очистки) + `WARNING`, `bad_dates`.
 - **Булево** не распознано → **`null`** + `WARNING`, `bad_booleans`.
-- **ИНН/КПП/ОГРН** не только цифры → **строка** после очистки + `WARNING`, `non_digit_ids`.
+- **ИНН/КПП/ОГРН** не только цифры после очистки → **`null`** (ключ обычно не пишется при умолчании), `non_digit_ids` в отчёте; подробности — `logging.debug`.
 - **Запись целиком** падает при обработке → строка в JSONL **не пишется**, `skipped` / `broken_records`.
 
 ## Парсинг

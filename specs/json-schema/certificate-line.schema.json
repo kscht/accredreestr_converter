@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/kscht/accredreestr_converter/specs/json-schema/certificate-line.schema.json",
   "title": "Строка JSONL: свидетельство (Certificate)",
-  "description": "Один объект JSON из выхода convert.py: поля сертификата, массивы Supplements/Decisions, опциональный ActualEducationOrganization. Неизвестные теги из XML могут появиться как дополнительные ключи. Пустой Id у элемента Decisions означает отсутствие идентификатора документа в выгрузке, не «отсутствие организации»; см. docs/sql_convert.md. Если Id у ActualEducationOrganization на корне и у ActualEducationOrganization внутри Supplements[] различаются, в смысле реестра это обычно означает филиал (отдельная ОО в приложении против головной на корне); см. docs/sql_convert.md.",
+  "description": "Один объект JSON из выхода convert.py: поля сертификата, массивы Supplements/Decisions, опциональный ActualEducationOrganization. По умолчанию компактный JSON (без ключей с null и пустых коллекций после нормализации). ИНН/КПП/ОГРН в типичном выходе — только цифры после очистки или ключ отсутствует. Неизвестные теги из XML могут появиться как дополнительные ключи. Пустой Id у элемента Decisions означает отсутствие идентификатора документа в выгрузке, не «отсутствие организации»; см. docs/sql_convert.md. Если Id у ActualEducationOrganization на корне и у ActualEducationOrganization внутри Supplements[] различаются, в смысле реестра это обычно означает филиал (отдельная ОО в приложении против головной на корне); см. docs/sql_convert.md.",
   "type": "object",
   "required": [
     "Id"
@@ -555,7 +555,7 @@
             "string",
             "null"
           ],
-          "description": "Идентификатор распорядительного документа в выгрузке. null, если в XML пустой тег — в JSONL объект решения может содержать другие поля; реляционный импорт не добавляет строку в таблицу decisions без непустого Id, сертификат не отбрасывается."
+          "description": "Идентификатор распорядительного документа в выгрузке. null или отсутствие ключа при компактном JSON (omit_null_keys по умолчанию), если в XML пустой тег — объект решения может содержать другие поля; реляционный импорт не добавляет строку в таблицу decisions без непустого Id, сертификат не отбрасывается."
         },
         "DecisionTypeName": {
           "type": [

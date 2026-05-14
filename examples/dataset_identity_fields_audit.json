@@ -1,0 +1,79 @@
+{
+  "source_jsonl": "out/data-20260403-structure-20160713.jsonl",
+  "description_ru": "Сводка по кандидатам на PK: EduOrgINN, EduOrgOGRN, INN и OGRN в корневом ActualEducationOrganization, а также INN/OGRN в карточках AEO внутри Supplements[]. Для supplement-секции total_lines = число карточек AEO-dict, не число сертификатов. Поле IndividualEntrepreneurINN в отчёт не входит.",
+  "certificate_lines_total": 43893,
+  "per_certificate": {
+    "EduOrgINN": {
+      "total_lines": 43893,
+      "missing_or_empty": 4,
+      "nonempty": 43889,
+      "nonempty_digits_only_after_clean": 43889,
+      "nonempty_not_digits_only_after_clean": 0,
+      "would_drop_if_require_nonempty": 4,
+      "would_drop_if_require_digits_only_after_clean": 4,
+      "sample_nonempty_not_digit_only_ids": []
+    },
+    "EduOrgOGRN": {
+      "total_lines": 43893,
+      "missing_or_empty": 4,
+      "nonempty": 43889,
+      "nonempty_digits_only_after_clean": 43889,
+      "nonempty_not_digits_only_after_clean": 0,
+      "would_drop_if_require_nonempty": 4,
+      "would_drop_if_require_digits_only_after_clean": 4,
+      "sample_nonempty_not_digit_only_ids": []
+    },
+    "root_ActualEducationOrganization_INN": {
+      "total_lines": 43893,
+      "missing_or_empty": 1219,
+      "nonempty": 42674,
+      "nonempty_digits_only_after_clean": 42674,
+      "nonempty_not_digits_only_after_clean": 0,
+      "would_drop_if_require_nonempty": 1219,
+      "would_drop_if_require_digits_only_after_clean": 1219,
+      "sample_nonempty_not_digit_only_ids": []
+    },
+    "root_ActualEducationOrganization_OGRN": {
+      "total_lines": 43893,
+      "missing_or_empty": 1,
+      "nonempty": 43892,
+      "nonempty_digits_only_after_clean": 43892,
+      "nonempty_not_digits_only_after_clean": 0,
+      "would_drop_if_require_nonempty": 1,
+      "would_drop_if_require_digits_only_after_clean": 1,
+      "sample_nonempty_not_digit_only_ids": []
+    }
+  },
+  "per_supplement_aeo_card": {
+    "supplement_aeo_cards_total": 55240,
+    "INN": {
+      "total_lines": 55240,
+      "missing_or_empty": 6711,
+      "nonempty": 48529,
+      "nonempty_digits_only_after_clean": 48529,
+      "nonempty_not_digits_only_after_clean": 0,
+      "would_drop_if_require_nonempty": 6711,
+      "would_drop_if_require_digits_only_after_clean": 6711,
+      "sample_nonempty_not_digit_only_ids": []
+    },
+    "OGRN": {
+      "total_lines": 55240,
+      "missing_or_empty": 5497,
+      "nonempty": 49743,
+      "nonempty_digits_only_after_clean": 49742,
+      "nonempty_not_digits_only_after_clean": 1,
+      "would_drop_if_require_nonempty": 5497,
+      "would_drop_if_require_digits_only_after_clean": 5498,
+      "sample_nonempty_not_digit_only_ids": [
+        "41bdcc5f-7798-1f84-e089-775958e99a6d"
+      ]
+    }
+  },
+  "glossary_ru": {
+    "missing_or_empty": "нет ключа в JSON, null или пустая строка после strip",
+    "digits_only_after_clean": "после удаления пробелов и дефисов строка непустая и str.isdigit()",
+    "would_drop_if_require_nonempty": "сколько строк (сертификатов) или карточек AEO не пройдут отбор «PK непустой»",
+    "would_drop_if_require_digits_only_after_clean": "сколько строк/карточек не пройдут отбор «PK = только цифры после очистки»",
+    "note_convert_identity_ru": "В свежем JSONL от convert.py по умолчанию нецифровые ИНН/КПП/ОГРН из XML не хранятся как строка: ключ отсутствует (omit_null_keys) или null (--include-null-keys); см. non_digit_ids в --report convert.py."
+  }
+}

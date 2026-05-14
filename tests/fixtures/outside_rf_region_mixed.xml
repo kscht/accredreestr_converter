@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenData>
+  <Certificates>
+    <Certificate>
+      <Id>rf-1</Id>
+      <IsFederal>0</IsFederal>
+      <StatusName>Действующее</StatusName>
+      <RegionName>Свердловская область</RegionName>
+    </Certificate>
+    <Certificate>
+      <Id>abroad-1</Id>
+      <IsFederal>0</IsFederal>
+      <StatusName>Действующее</StatusName>
+      <RegionName>образовательные учреждения, находящиеся за пределами Российской Федерации</RegionName>
+    </Certificate>
+  </Certificates>
+</OpenData>

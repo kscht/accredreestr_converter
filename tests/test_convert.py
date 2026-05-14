@@ -18,6 +18,9 @@ ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / "tests" / "fixtures"
 SCHEMA = ROOT / "specs" / "xml" / "data-20160908-structure-20160713.xml"
 
+# API: JSON как сразу после парсера (все null и псевдорегион «за пределами РФ» в выводе).
+_KW_FULL_JSONL = {"omit_null_keys": False, "omit_outside_rf_region": False}
+
 
 def _run_convert_cli(args: list[str]) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
@@ -54,8 +57,8 @@ def test_minimal(tmp_path: Path) -> None:
     assert row["IssueDate"] == "2020-01-15"
     assert row["EndDate"] == "2025-01-15"
     assert "_source_file" not in row
-    assert row["Supplements"] == []
-    assert row["Decisions"] == []
+    assert "Supplements" not in row
+    assert "Decisions" not in row
     assert stats.per_file["minimal.xml"]["processed"] == 1
 
 
@@ -76,7 +79,7 @@ def test_multiple_supplements(tmp_path: Path) -> None:
     assert isinstance(sups, list)
     assert len(sups) == 2
     assert {s["Id"] for s in sups} == {"s1", "s2"}
-    assert sups[0]["EducationalPrograms"] == []
+    assert "EducationalPrograms" not in sups[0]
 
 
 def test_single_supplement_wrapped_in_array(tmp_path: Path) -> None:
@@ -110,8 +113,8 @@ def test_missing_collection_is_empty_array(tmp_path: Path) -> None:
         schema_path=SCHEMA,
     )
     row = _read_jsonl(out)[0]
-    assert row["Supplements"] == []
-    assert row["Decisions"] == []
+    assert "Supplements" not in row
+    assert "Decisions" not in row
 
 
 def test_bool_casting(caplog: pytest.LogCaptureFixture) -> None:
@@ -148,7 +151,7 @@ def test_id_numbers_are_strings() -> None:
     assert c.cast_id_number("007200000000", "INN", stats) == "007200000000"
     assert c.cast_id_number("7 200 000 000", "INN", stats) == "7200000000"
     assert c.cast_id_number("7200-000-000", "INN", stats) == "7200000000"
-    assert c.cast_id_number("12-3X4", "INN", stats) == "123X4"
+    assert c.cast_id_number("12-3X4", "INN", stats) is None
     assert stats.non_digit_ids == 1
 
 
@@ -217,7 +220,6 @@ def test_convert_many_omit_null_keys_strips_null_keys(tmp_path: Path) -> None:
         limit=None,
         strict=False,
         schema_path=SCHEMA,
-        omit_null_keys=True,
     )
     row = _read_jsonl(out)[0]
     assert row["Id"] == "ef-1"
@@ -240,6 +242,7 @@ def test_empty_tag_becomes_null(tmp_path: Path) -> None:
         limit=None,
         strict=False,
         schema_path=SCHEMA,
+        **_KW_FULL_JSONL,
     )
     row = _read_jsonl(out)[0]
     assert row["RegNumber"] is None
@@ -512,7 +515,7 @@ def test_streaming_memory(tmp_path: Path) -> None:
     assert len(_read_jsonl(out)) == 5000
 
 
-def test_omit_inactive_certificates_by_default(tmp_path: Path) -> None:
+def test_inactive_excluded_by_default(tmp_path: Path) -> None:
     out = tmp_path / "o.jsonl"
     stats = c.convert_many(
         [FIXTURES / "inactive_mixed.xml"],
@@ -530,7 +533,7 @@ def test_omit_inactive_certificates_by_default(tmp_path: Path) -> None:
     assert stats.per_file["inactive_mixed.xml"]["omitted_inactive"] == 1
 
 
-def test_include_inactive_certificates_when_disabled_filter(tmp_path: Path) -> None:
+def test_include_inactive_full_snapshot_via_api(tmp_path: Path) -> None:
     out = tmp_path / "o.jsonl"
     stats = c.convert_many(
         [FIXTURES / "inactive_mixed.xml"],
@@ -550,12 +553,12 @@ def test_include_inactive_certificates_when_disabled_filter(tmp_path: Path) -> N
 
 
 def test_cli_include_inactive_flag(tmp_path: Path) -> None:
-    out_def = tmp_path / "def.jsonl"
+    out_active = tmp_path / "active.jsonl"
     p = _run_convert_cli(
         [
             str(FIXTURES / "inactive_mixed.xml"),
             "-o",
-            str(out_def),
+            str(out_active),
             "--schema",
             str(SCHEMA),
             "--progress-every",
@@ -563,14 +566,14 @@ def test_cli_include_inactive_flag(tmp_path: Path) -> None:
         ]
     )
     assert p.returncode == 0
-    assert len(_read_jsonl(out_def)) == 1
+    assert len(_read_jsonl(out_active)) == 1
 
-    out_all = tmp_path / "all.jsonl"
+    out_full = tmp_path / "full.jsonl"
     p2 = _run_convert_cli(
         [
             str(FIXTURES / "inactive_mixed.xml"),
             "-o",
-            str(out_all),
+            str(out_full),
             "--include-inactive",
             "--schema",
             str(SCHEMA),
@@ -579,15 +582,192 @@ def test_cli_include_inactive_flag(tmp_path: Path) -> None:
         ]
     )
     assert p2.returncode == 0
-    assert len(_read_jsonl(out_all)) == 2
+    assert len(_read_jsonl(out_full)) == 2
+
+
+def test_outside_rf_excluded_by_default(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    stats = c.convert_many(
+        [FIXTURES / "outside_rf_region_mixed.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+    )
+    rows = _read_jsonl(out)
+    assert len(rows) == 1
+    assert rows[0]["Id"] == "rf-1"
+    assert stats.per_file["outside_rf_region_mixed.xml"]["omitted_outside_rf_region"] == 1
+
+
+def test_include_outside_rf_region_full_snapshot_via_api(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    stats = c.convert_many(
+        [FIXTURES / "outside_rf_region_mixed.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+        omit_outside_rf_region=False,
+    )
+    rows = _read_jsonl(out)
+    assert len(rows) == 2
+    assert {r["Id"] for r in rows} == {"rf-1", "abroad-1"}
+    assert stats.per_file["outside_rf_region_mixed.xml"]["omitted_outside_rf_region"] == 0
+
+
+def test_has_valid_eduorg_ogrn() -> None:
+    assert c.has_valid_eduorg_ogrn({"EduOrgOGRN": "1027700132195"})
+    assert c.has_valid_eduorg_ogrn({"EduOrgOGRN": "1027 700 132 195"})
+    assert not c.has_valid_eduorg_ogrn({})
+    assert not c.has_valid_eduorg_ogrn({"EduOrgOGRN": None})
+    assert not c.has_valid_eduorg_ogrn({"EduOrgOGRN": ""})
+    assert not c.has_valid_eduorg_ogrn({"EduOrgOGRN": "   "})
+    assert not c.has_valid_eduorg_ogrn({"EduOrgOGRN": "1027-X-132195"})
+
+
+def test_include_invalid_eduorg_ogrn_by_default(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    stats = c.convert_many(
+        [FIXTURES / "invalid_eduorg_ogrn_mixed.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+    )
+    rows = _read_jsonl(out)
+    assert len(rows) == 5
+    assert {r["Id"] for r in rows} == {
+        "ogrn-good-digits",
+        "ogrn-good-spaced",
+        "ogrn-empty",
+        "ogrn-missing-tag",
+        "ogrn-bad-alpha",
+    }
+    assert stats.per_file["invalid_eduorg_ogrn_mixed.xml"]["omitted_invalid_eduorg_ogrn"] == 0
+
+
+def test_omit_invalid_eduorg_ogrn_when_requested(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    stats = c.convert_many(
+        [FIXTURES / "invalid_eduorg_ogrn_mixed.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+        omit_invalid_eduorg_ogrn=True,
+    )
+    rows = _read_jsonl(out)
+    assert len(rows) == 2
+    assert {r["Id"] for r in rows} == {"ogrn-good-digits", "ogrn-good-spaced"}
+    assert stats.per_file["invalid_eduorg_ogrn_mixed.xml"]["omitted_invalid_eduorg_ogrn"] == 3
+
+
+def test_cli_omit_invalid_eduorg_ogrn_flag(tmp_path: Path) -> None:
+    out_full = tmp_path / "full.jsonl"
+    p = _run_convert_cli(
+        [
+            str(FIXTURES / "invalid_eduorg_ogrn_mixed.xml"),
+            "-o",
+            str(out_full),
+            "--schema",
+            str(SCHEMA),
+            "--progress-every",
+            "0",
+        ]
+    )
+    assert p.returncode == 0
+    assert len(_read_jsonl(out_full)) == 5
+
+    out_valid = tmp_path / "valid_ogrn.jsonl"
+    p2 = _run_convert_cli(
+        [
+            str(FIXTURES / "invalid_eduorg_ogrn_mixed.xml"),
+            "-o",
+            str(out_valid),
+            "--omit-invalid-eduorg-ogrn",
+            "--schema",
+            str(SCHEMA),
+            "--progress-every",
+            "0",
+        ]
+    )
+    assert p2.returncode == 0
+    assert len(_read_jsonl(out_valid)) == 2
+
+
+def test_cli_outside_rf_region_default_and_flags(tmp_path: Path) -> None:
+    out_rf_only = tmp_path / "rf_only.jsonl"
+    p = _run_convert_cli(
+        [
+            str(FIXTURES / "outside_rf_region_mixed.xml"),
+            "-o",
+            str(out_rf_only),
+            "--schema",
+            str(SCHEMA),
+            "--progress-every",
+            "0",
+        ]
+    )
+    assert p.returncode == 0
+    assert len(_read_jsonl(out_rf_only)) == 1
+
+    out_full = tmp_path / "full.jsonl"
+    p2 = _run_convert_cli(
+        [
+            str(FIXTURES / "outside_rf_region_mixed.xml"),
+            "-o",
+            str(out_full),
+            "--include-outside-rf-region",
+            "--schema",
+            str(SCHEMA),
+            "--progress-every",
+            "0",
+        ]
+    )
+    assert p2.returncode == 0
+    assert len(_read_jsonl(out_full)) == 2
+
+    out_explicit = tmp_path / "rf_explicit_omit.jsonl"
+    p3 = _run_convert_cli(
+        [
+            str(FIXTURES / "outside_rf_region_mixed.xml"),
+            "-o",
+            str(out_explicit),
+            "--omit-outside-rf-region",
+            "--schema",
+            str(SCHEMA),
+            "--progress-every",
+            "0",
+        ]
+    )
+    assert p3.returncode == 0
+    assert len(_read_jsonl(out_explicit)) == 1
 
 
 def test_cli_help() -> None:
     p = _run_convert_cli(["--help"])
     assert p.returncode == 0
     assert "--merged" in p.stdout
+    assert "--omit-inactive" in p.stdout
     assert "--include-inactive" in p.stdout
+    assert "--omit-outside-rf-region" in p.stdout
+    assert "--include-outside-rf-region" in p.stdout
     assert "--omit-null-keys" in p.stdout
+    assert "--include-null-keys" in p.stdout
+    assert "--omit-invalid-eduorg-ogrn" in p.stdout
 
     p2 = subprocess.run(
         [sys.executable, str(ROOT / "download.py"), "--help"],

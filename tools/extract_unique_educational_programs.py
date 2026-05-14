@@ -1,22 +1,29 @@
 #!/usr/bin/env python3
 """Уникальные объекты EducationalProgram из большого JSONL (один проход).
 
+Вход обычно — JSONL из ``convert.py`` (по умолчанию без «Недействующее» на корне, без псевдорегиона «за пределами РФ», без ключей с ``null`` и пустых ``[]``/``{}``).
+
 Уникальность по **содержимому без поля Id** (Id в реестре не глобально уникален).
 Поля **TypeName**, **EduNormativePeriod**, **IsAccredited**, **IsCanceled**, **IsSuspended**
-не входят в справочник: исключаются из отпечатка уникальности и из строк выхода. Программы **без непустого UGSName** в справочник не попадают. **Qualification** по умолчанию **может быть пустой** (как в выгрузке ИС ГА для части СПО, напр. 09.02.07); при **`--require-qualification`** в выборку только с непустым Qualification. Для **Qualification**-строк сначала канонизация хвоста («перед закрывающей кавычкой…»), затем **уникальность** по отпечатку. Строки выхода **сортируются по убыванию длины Qualification** (пустая/`null` — в конце по длине), затем по **UGSCode** (пустой — позже), ProgrammCode, ProgrammName и отпечатку. В каждую строку JSONL — остальные поля программы и **Id**
-первого вхождения данного набора (после исключений).
+не входят в справочник: исключаются из отпечатка уникальности и из строк выхода. Программы **без непустого UGSName** в справочник не попадают. **Qualification** по умолчанию **может быть пустой** (как в выгрузке ИС ГА для части СПО, напр. 09.02.07); при **`--require-qualification`** в выборку только с непустым Qualification. Для **Qualification**-строк сначала канонизация хвоста («перед закрывающей кавычкой…»), затем **уникальность** по отпечатку. Строки выхода **сортируются по убыванию длины Qualification** (пустая/`null` — в конце по длине), затем по **ProgrammCode** (стандартный ``XX.XX.XX`` — по трём числам; нестандартные непустые — по строке; пустой/null — позже), затем **UGSCode** (так же), ProgrammName и отпечатку. В каждую строку JSONL — остальные поля программы и **Id**
+первого вхождения данного набора (после исключений). После сборки выполняется проверка целостности для **ProgrammCode ``09.02.07``**: если такие программы прошли фильтры, в выходе обязана быть хотя бы одна строка с этим кодом (иначе скрипт завершится с кодом **1**).
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Final
 
 _ROOT = Path(__file__).resolve().parents[1]
 _DEFAULT_OUT = _ROOT / "examples" / "educational_programs_unique.jsonl"
+
+# Если после фильтров во входе была хотя бы одна программа с таким ProgrammCode, в выходе
+# обязана быть ровно одна уникальная строка с этим кодом (регресс: СПО 09.02.07 с пустым Qualification).
+_PROGRAMM_CODES_OUTPUT_INVARIANT: Final[frozenset[str]] = frozenset({"09.02.07"})
 
 # Не для номенклатурного справочника: не пишем и не участвуют в дедупликации.
 _OMIT_FOR_NOMENCLATURE: frozenset[str] = frozenset(
@@ -28,6 +35,8 @@ _OMIT_FOR_NOMENCLATURE: frozenset[str] = frozenset(
         "IsSuspended",
     }
 )
+
+_TRIPLET_CODE_RE = re.compile(r"^(\d{2})\.(\d{2})\.(\d{2})$")
 
 
 def _fingerprint(prog: dict[str, Any]) -> str:
@@ -94,17 +103,50 @@ def _qualification_text_len(rec: dict[str, Any]) -> int:
     return len(str(v))
 
 
+def _nomenclature_code_sort_key(raw: Any) -> tuple[Any, ...]:
+    """Порядок: ``XX.XX.XX`` по трём числам; затем прочие непустые по строке; пустой/null — последними."""
+    s = "" if raw is None else str(raw).strip()
+    if not s:
+        return (2, 0, 0, 0, "")
+    m = _TRIPLET_CODE_RE.fullmatch(s)
+    if m:
+        return (0, int(m.group(1)), int(m.group(2)), int(m.group(3)), "")
+    return (1, 0, 0, 0, s)
+
+
+def _normalized_programm_code(raw: Any) -> str | None:
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    return s or None
+
+
+def _verify_output_invariants(
+    seen: dict[str, dict[str, Any]],
+    invariant_input_hits: dict[str, int],
+) -> str | None:
+    """Проверка, что «якорные» коды не потеряны при дедупликации (ошибка логики / регресс)."""
+    for code in _PROGRAMM_CODES_OUTPUT_INVARIANT:
+        n = int(invariant_input_hits.get(code, 0))
+        if n == 0:
+            continue
+        if not any(r.get("ProgrammCode") == code for r in seen.values()):
+            return (
+                f"Внутренняя ошибка сборки справочника: во входе после фильтров встречалась "
+                f"программа с ProgrammCode {code!r} ({n} раз), но среди уникальных строк выхода "
+                f"нет ни одной записи с этим кодом."
+            )
+    return None
+
+
 def _nominal_sort_key(fp: str, rec: dict[str, Any]) -> tuple[Any, ...]:
-    """Сортировка: длиннее Qualification выше; затем UGSCode и стабильный хвост."""
+    """Сортировка: длиннее Qualification выше; затем ProgrammCode, UGSCode и стабильный хвост."""
     qlen = _qualification_text_len(rec)
-    raw = rec.get("UGSCode")
-    code = "" if raw is None else str(raw).strip()
-    missing = not code
-    pc = rec.get("ProgrammCode")
-    prog_c = "" if pc is None else str(pc)
+    pk = _nomenclature_code_sort_key(rec.get("ProgrammCode"))
+    uk = _nomenclature_code_sort_key(rec.get("UGSCode"))
     pn = rec.get("ProgrammName")
     prog_n = "" if pn is None else str(pn)
-    return (-qlen, missing, code, prog_c, prog_n, fp)
+    return (-qlen, pk, uk, prog_n, fp)
 
 
 def main() -> int:
@@ -113,7 +155,7 @@ def main() -> int:
             "Собрать уникальные EducationalProgram по содержимому (без Id); "
             "без TypeName, EduNormativePeriod, IsAccredited/IsCanceled/IsSuspended; "
             "только с непустым UGSName (Qualification по умолчанию может быть пустой); "
-            "Id — первое вхождение; выход: сначала по убыванию длины Qualification, затем по UGSCode."
+            "Id — первое вхождение; выход: по убыванию длины Qualification, затем ProgrammCode, UGSCode."
         ),
     )
     p.add_argument("jsonl", type=Path, help="Входной .jsonl (сертификаты)")
@@ -149,6 +191,7 @@ def main() -> int:
     programs_seen = 0
     skipped_no_ugs_name = 0
     skipped_no_qualification = 0
+    invariant_hits: dict[str, int] = {c: 0 for c in _PROGRAMM_CODES_OUTPUT_INVARIANT}
 
     with args.jsonl.open(encoding="utf-8", errors="replace") as fh:
         for line in fh:
@@ -177,12 +220,20 @@ def main() -> int:
                     if args.require_qualification and not _qualification_present(prog):
                         skipped_no_qualification += 1
                         continue
+                    pcn = _normalized_programm_code(prog.get("ProgrammCode"))
+                    if pcn in invariant_hits:
+                        invariant_hits[pcn] += 1
                     fp = _fingerprint(prog)
                     if fp not in seen:
                         seen[fp] = _nominal_record(dict(prog))
 
             if args.limit is not None and lines_in >= args.limit:
                 break
+
+    inv_err = _verify_output_invariants(seen, invariant_hits)
+    if inv_err:
+        print(inv_err, file=sys.stderr)
+        return 1
 
     out: Path = args.output
     out.parent.mkdir(parents=True, exist_ok=True)

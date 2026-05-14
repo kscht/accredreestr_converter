@@ -1,4 +1,9 @@
-"""Потоковая конвертация XML реестра аккредитации в JSON Lines."""
+"""Потоковая конвертация XML реестра аккредитации в JSON Lines (UTF-8).
+
+По умолчанию: без «Недействующее» на корне, без псевдорегиона «за пределами РФ», компактный JSON
+(без ключей с null и пустых коллекций после нормализации). ИНН/КПП/ОГРН — только цифры после
+очистки или ключ не пишется; счётчик ``non_digit_ids`` в отчёте ``--report``.
+"""
 
 from __future__ import annotations
 
@@ -56,8 +61,13 @@ COLLECTION_DEFAULTS: Final[dict[str, tuple[str, ...]]] = {
     "Supplement": ("EducationalPrograms",),
 }
 
-# Записи Certificate с таким StatusName по умолчанию не попадают в JSONL (--include-inactive).
+# Записи Certificate с таким StatusName при включённом --omit-inactive не попадают в JSONL.
 CERTIFICATE_STATUS_OMITTED_FROM_JSONL: Final[str] = "Недействующее"
+
+# Псевдорегион для ОО за пределами РФ; по умолчанию такие сертификаты не пишутся в JSONL (см. omit_outside_rf_region).
+CERTIFICATE_REGION_NAME_OUTSIDE_RF: Final[str] = (
+    "образовательные учреждения, находящиеся за пределами Российской Федерации"
+)
 
 # Имя эталонного XML структуры (лежит в specs/xml/)
 DEFAULT_SCHEMA_FILENAME: Final[str] = "data-20160908-structure-20160713.xml"
@@ -222,19 +232,25 @@ def parse_date(raw: str | None, field_name: str, stats: ConversionStats) -> str 
 def cast_id_number(
     raw: str | None, field_name: str, stats: ConversionStats
 ) -> str | None:
-    """Удаляет пробелы и дефисы из идентификатора; проверяет, что остались только цифры."""
+    """Удаляет пробелы и дефисы; возвращает строку только если остались одни цифры, иначе None.
+
+    Непригодные для PK значения (буквы, запятая, «1,02E+12» и т.п.) не попадают в JSON
+    как строка: ``None`` → при ``omit_null_keys`` ключ не пишется; в отчёте — ``non_digit_ids``.
+    Диагностика — ``logging.debug`` (не засоряет INFO/WARN при больших выгрузках).
+    """
     if raw is None:
         return None
     cleaned = re.sub(r"[\s\-]", "", raw)
     if not cleaned:
         return None
     if not cleaned.isdigit():
-        logging.warning(
-            "Поле %s после очистки содержит не только цифры: %r",
+        logging.debug(
+            "Поле %s после очистки не только цифры, в JSON будет null/ключ убран: %r",
             field_name,
             cleaned,
         )
         stats.non_digit_ids += 1
+        return None
     return cleaned
 
 
@@ -358,6 +374,22 @@ def elem_to_dict(
     return out
 
 
+def has_valid_eduorg_ogrn(record: dict[str, Any]) -> bool:
+    """True, если на корне Certificate есть непустой EduOrgOGRN из цифр после очистки.
+
+    Согласовано с ``tools/audit_dataset_identity_fields.py`` (блок ``per_certificate.EduOrgOGRN``): пробелы и дефисы убираются,
+    остаток непустой и состоит только из цифр.
+    """
+    v = record.get("EduOrgOGRN")
+    if v is None:
+        return False
+    s = str(v).strip()
+    if not s:
+        return False
+    cleaned = re.sub(r"[\s\-]", "", s)
+    return bool(cleaned) and cleaned.isdigit()
+
+
 @dataclass
 class ConversionStats:
     """Накопление статистики конвертации."""
@@ -381,6 +413,12 @@ class ConversionStats:
         total_omitted_inactive = sum(
             int(v.get("omitted_inactive", 0)) for v in self.per_file.values()
         )
+        total_omitted_outside_rf = sum(
+            int(v.get("omitted_outside_rf_region", 0)) for v in self.per_file.values()
+        )
+        total_omitted_invalid_eduorg_ogrn = sum(
+            int(v.get("omitted_invalid_eduorg_ogrn", 0)) for v in self.per_file.values()
+        )
         return {
             "inputs": list(inputs),
             "per_file": dict(self.per_file),
@@ -388,6 +426,8 @@ class ConversionStats:
                 "processed": total_processed,
                 "skipped": total_skipped,
                 "omitted_inactive": total_omitted_inactive,
+                "omitted_outside_rf_region": total_omitted_outside_rf,
+                "omitted_invalid_eduorg_ogrn": total_omitted_invalid_eduorg_ogrn,
                 "warnings": {
                     "bad_dates": self.bad_dates,
                     "bad_booleans": self.bad_booleans,
@@ -406,6 +446,8 @@ def _init_file_stats(stats: ConversionStats, basename: str) -> None:
             "processed": 0,
             "skipped": 0,
             "omitted_inactive": 0,
+            "omitted_outside_rf_region": 0,
+            "omitted_invalid_eduorg_ogrn": 0,
         }
 
 
@@ -420,8 +462,10 @@ def convert_one(
     limit: int | None,
     strict: bool,
     omit_inactive: bool = True,
+    omit_outside_rf_region: bool = True,
+    omit_invalid_eduorg_ogrn: bool = False,
     source_basename: str | None = None,
-    omit_null_keys: bool = False,
+    omit_null_keys: bool = True,
 ) -> None:
     """Конвертирует один XML-файл, дописывая строки JSON в открытый файловый объект."""
     _ = schema_path  # зарезервировано для расширений / совместимости API
@@ -457,6 +501,12 @@ def convert_one(
                     record.get("StatusName") == CERTIFICATE_STATUS_OMITTED_FROM_JSONL
                 ):
                     stats.per_file[base]["omitted_inactive"] += 1
+                elif omit_outside_rf_region and (
+                    record.get("RegionName") == CERTIFICATE_REGION_NAME_OUTSIDE_RF
+                ):
+                    stats.per_file[base]["omitted_outside_rf_region"] += 1
+                elif omit_invalid_eduorg_ogrn and not has_valid_eduorg_ogrn(record):
+                    stats.per_file[base]["omitted_invalid_eduorg_ogrn"] += 1
                 else:
                     safe = ensure_json_safe(record)
                     if omit_null_keys:
@@ -499,7 +549,9 @@ def convert_many(
     strict: bool,
     schema_path: Path,
     omit_inactive: bool = True,
-    omit_null_keys: bool = False,
+    omit_outside_rf_region: bool = True,
+    omit_invalid_eduorg_ogrn: bool = False,
+    omit_null_keys: bool = True,
 ) -> ConversionStats:
     """Конвертирует один или несколько входных XML.
 
@@ -511,9 +563,19 @@ def convert_many(
         out_dir: Каталог для раздельных выходов при ``merged=False``.
         omit_inactive: Если True, не записывать в JSONL сертификаты, у которых на корне
             ``StatusName`` равен константе ``CERTIFICATE_STATUS_OMITTED_FROM_JSONL``
-            («Недействующее»).
+            («Недействующее»). По умолчанию **True**; полный снимок как в XML —
+            передайте ``omit_inactive=False`` или в CLI флаг ``--include-inactive``.
+        omit_outside_rf_region: Если True, не записывать сертификаты, у которых на корне
+            ``RegionName`` совпадает с ``CERTIFICATE_REGION_NAME_OUTSIDE_RF``.
+            По умолчанию **True**; полный снимок по региону как в XML —
+            передайте ``omit_outside_rf_region=False`` или в CLI ``--include-outside-rf-region``.
+        omit_invalid_eduorg_ogrn: Если True, не записывать сертификаты без валидного
+            корневого ``EduOrgOGRN`` (непустая строка из цифр после удаления пробелов
+            и дефисов). По умолчанию **False** — полный снимок как в XML.
         omit_null_keys: Если True, перед записью строки убрать null, пустые строки
             и пустые вложенные dict/list (см. ``omit_empty_json_values``).
+            По умолчанию **True**; все ключи как у парсера —
+            ``omit_null_keys=False`` или ``--include-null-keys``.
     """
     if not inputs:
         raise ValueError("Нет входных файлов")
@@ -538,6 +600,8 @@ def convert_many(
                     limit=limit,
                     strict=strict,
                     omit_inactive=omit_inactive,
+                    omit_outside_rf_region=omit_outside_rf_region,
+                    omit_invalid_eduorg_ogrn=omit_invalid_eduorg_ogrn,
                     omit_null_keys=omit_null_keys,
                 )
     else:
@@ -556,6 +620,8 @@ def convert_many(
                     limit=limit,
                     strict=strict,
                     omit_inactive=omit_inactive,
+                    omit_outside_rf_region=omit_outside_rf_region,
+                    omit_invalid_eduorg_ogrn=omit_invalid_eduorg_ogrn,
                     omit_null_keys=omit_null_keys,
                 )
 
@@ -626,11 +692,45 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         help="Прервать выполнение при ошибке обработки записи",
     )
     p.add_argument(
+        "--omit-inactive",
+        action="store_true",
+        help=(
+            "Не записывать в JSONL сертификаты со StatusName «Недействующее» на корне Certificate "
+            "(это поведение по умолчанию; флаг можно не указывать)"
+        ),
+    )
+    p.add_argument(
+        "--omit-outside-rf-region",
+        action="store_true",
+        help=(
+            "Не записывать сертификаты с RegionName «образовательные учреждения, "
+            "находящиеся за пределами Российской Федерации» на корне "
+            "(это поведение по умолчанию; флаг можно не указывать)"
+        ),
+    )
+    p.add_argument(
+        "--omit-invalid-eduorg-ogrn",
+        action="store_true",
+        help=(
+            "Не записывать сертификаты без валидного корневого EduOrgOGRN: пусто, "
+            "нет ключа или после удаления пробелов/дефисов не только цифры "
+            "(как в ``tools/audit_dataset_identity_fields.py`` для ``EduOrgOGRN``; по умолчанию такие строки включаются)"
+        ),
+    )
+    p.add_argument(
         "--include-inactive",
         action="store_true",
         help=(
-            "Включить в JSONL записи со StatusName «Недействующее» на корне Certificate "
-            "(по умолчанию они пропускаются)"
+            "Включать в JSONL и недействующие свидетельства (StatusName «Недействующее» на корне) — "
+            "полный снимок по статусу, как в XML"
+        ),
+    )
+    p.add_argument(
+        "--include-outside-rf-region",
+        action="store_true",
+        help=(
+            "Включать в JSONL и сертификаты с псевдорегионом «за пределами РФ» на корневом "
+            "RegionName — полный снимок по региону, как в XML"
         ),
     )
     p.add_argument(
@@ -644,8 +744,16 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         action="store_true",
         help=(
             "Не писать в JSON ключи со значением null, пустой строкой и пустыми "
-            "вложенными объектами/массивами после очистки (меньше размер файла; "
-            "отсутствие ключа эквивалентно null для необязательных полей)."
+            "вложенными объектами/массивами после очистки (это поведение по умолчанию; "
+            "флаг можно не указывать)"
+        ),
+    )
+    p.add_argument(
+        "--include-null-keys",
+        action="store_true",
+        help=(
+            "Писать в JSON ключи со значением null и пустые массивы/объекты после нормализации "
+            "(полный снимок полей, как сразу после парсера XML)"
         ),
     )
     return p.parse_args(argv)
@@ -693,6 +801,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         out_path = (args.output or (out_dir / f"{inputs[0].stem}.jsonl")).resolve()
         merged = True
 
+    if args.omit_inactive and args.include_inactive:
+        logging.error("Нельзя одновременно указывать --omit-inactive и --include-inactive")
+        return 2
+    if args.omit_outside_rf_region and args.include_outside_rf_region:
+        logging.error(
+            "Нельзя одновременно указывать --omit-outside-rf-region и --include-outside-rf-region"
+        )
+        return 2
+    if args.omit_null_keys and args.include_null_keys:
+        logging.error("Нельзя одновременно указывать --omit-null-keys и --include-null-keys")
+        return 2
+
+    omit_inactive = not bool(args.include_inactive)
+    omit_outside_rf_region = not bool(args.include_outside_rf_region)
+    omit_null_keys = not bool(args.include_null_keys)
+
     t0 = time.perf_counter()
     try:
         stats = convert_many(
@@ -704,8 +828,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             limit=args.limit,
             strict=args.strict,
             schema_path=schema_path.resolve(),
-            omit_inactive=not args.include_inactive,
-            omit_null_keys=args.omit_null_keys,
+            omit_inactive=omit_inactive,
+            omit_outside_rf_region=omit_outside_rf_region,
+            omit_invalid_eduorg_ogrn=bool(args.omit_invalid_eduorg_ogrn),
+            omit_null_keys=omit_null_keys,
         )
     except ValueError as ve:
         logging.error("%s", ve)
