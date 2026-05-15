@@ -974,6 +974,74 @@ def test_fill_edulevel_from_programm_name_can_disable(tmp_path: Path) -> None:
     assert "EduLevelName" not in progs[0]
 
 
+def test_normalize_edu_level_names_fz273_fixture(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    stats = c.convert_many(
+        [FIXTURES / "edulevel_fz273_normalization.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+    )
+    row = _read_jsonl(out)[0]
+    progs = row["Supplements"][0]["EducationalPrograms"]
+    assert progs[0]["EduLevelName"] == "Основное общее образование"
+    assert progs[1]["EduLevelName"] == "Высшее образование - бакалавриат"
+    assert progs[2]["EduLevelName"] == "Среднее общее образование"
+    assert "EduLevelName" not in progs[3]
+    assert stats.edulevel_fz273_renamed_programs == 2
+    assert stats.edulevel_fz273_cleared_programs == 1
+    assert stats.edulevel_fz273_unknown_level_programs == 0
+
+
+def test_normalize_edu_level_names_fz273_can_disable(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    c.convert_many(
+        [FIXTURES / "edulevel_fz273_normalization.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+        normalize_edu_level_names_fz273=False,
+    )
+    row = _read_jsonl(out)[0]
+    progs = row["Supplements"][0]["EducationalPrograms"]
+    assert progs[0]["EduLevelName"] == "Общее образование"
+    assert progs[1]["EduLevelName"] == "ВО - бакалавриат"
+    assert progs[2]["EduLevelName"] == "Среднее общее образование"
+    assert progs[3]["EduLevelName"] == "Не определен"
+
+
+def test_report_contains_fz273_map_counts(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    rep = tmp_path / "rep.json"
+    proc = _run_convert_cli(
+        [
+            str(FIXTURES / "edulevel_fz273_normalization.xml"),
+            "-o",
+            str(out),
+            "--report",
+            str(rep),
+            "--schema",
+            str(SCHEMA),
+            "--progress-every",
+            "0",
+        ]
+    )
+    assert proc.returncode == 0
+    data = json.loads(rep.read_text(encoding="utf-8"))
+    fz = data["total"]["educational_program_EduLevelName_fz273_map"]
+    assert fz["renamed_to_canonical_target"] == 2
+    assert fz["cleared_null_target"] == 1
+    assert fz["unknown_registry_level_programs"] == 0
+
+
 def test_report_contains_edulevel_from_programm_count(tmp_path: Path) -> None:
     out = tmp_path / "o.jsonl"
     rep = tmp_path / "rep.json"

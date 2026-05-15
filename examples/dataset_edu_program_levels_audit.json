@@ -13,48 +13,36 @@
   "school_sector_histogram": {
     "Дошкольное образование": 14,
     "Начальное общее образование": 41119,
-    "Не определен": 1,
-    "Общее образование": 2,
-    "Основное общее образование": 39881,
-    "Среднее (полное) общее образование": 1,
-    "Среднее общее образование": 32214
+    "Основное общее образование": 39883,
+    "Среднее общее образование": 32215
   },
-  "school_sector_program_objects_subtotal": 113232,
+  "school_sector_program_objects_subtotal": 113231,
   "certificate_lines_total": 43724,
   "educational_program_objects_total": 239412,
-  "educational_programs_with_empty_or_missing_EduLevelName": 349,
-  "certificates_with_any_empty_EduLevelName_program": 30,
+  "educational_programs_with_empty_or_missing_EduLevelName": 350,
+  "certificates_with_any_empty_EduLevelName_program": 31,
   "by_kind_if_has_empty_edulevel": {
     "mixed_school_and_other": 8,
-    "non_school_levels_only": 22
+    "non_school_levels_only": 23
   },
   "certificates_by_program_level_kind": {
-    "mixed_school_and_other": 1112,
+    "mixed_school_and_other": 1111,
     "no_educational_programs": 560,
-    "non_school_levels_only": 4791,
+    "non_school_levels_only": 4792,
     "school_levels_only": 37261
   },
   "histogram_EduLevelName": {
-    "Среднее профессиональное образование": 63410,
+    "Среднее профессиональное образование": 63416,
     "Начальное общее образование": 41119,
-    "Основное общее образование": 39881,
-    "Среднее общее образование": 32214,
-    "Высшее образование - бакалавриат": 25176,
+    "Основное общее образование": 39883,
+    "Среднее общее образование": 32215,
+    "Высшее образование - бакалавриат": 25177,
     "Высшее образование - магистратура": 16486,
-    "Высшее образование - подготовка кадров высшей квалификации": 14641,
+    "Высшее образование - подготовка кадров высшей квалификации": 15484,
     "Высшее образование - специалитет": 5267,
-    "ВО - подготовка кадров высшей квалификации": 843,
-    "<пустой EduLevelName>": 349,
+    "<пустой EduLevelName>": 350,
     "Дошкольное образование": 14,
-    "Начальное профессиональное образование": 3,
-    "Общее образование": 2,
-    "ВО - бакалавриат": 1,
-    "Дополнительное профессиональное образование": 1,
-    "Не определен": 1,
-    "Профессиональное образование": 1,
-    "Профессиональное обучение": 1,
-    "Среднее (полное) общее образование": 1,
-    "Среднее профессиональное образование (базовая подготовка)": 1
+    "Дополнительное профессиональное образование": 1
   },
   "examples_by_kind": {
     "no_educational_programs": [
@@ -4306,8 +4294,8 @@
         "certificate_id": "0b0e100d-110d-100e-0e0d-0c100f0b100a",
         "input_line_number": 1794,
         "EduLevelName_nonempty_distinct": [
-          "ВО - подготовка кадров высшей квалификации",
           "Высшее образование - магистратура",
+          "Высшее образование - подготовка кадров высшей квалификации",
           "Высшее образование - специалитет",
           "Среднее профессиональное образование"
         ],
@@ -4466,7 +4454,7 @@
         "certificate_id": "0b0e1011-110d-0a0a-0b0f-0d0e0d0d0f11",
         "input_line_number": 1813,
         "EduLevelName_nonempty_distinct": [
-          "ВО - подготовка кадров высшей квалификации"
+          "Высшее образование - подготовка кадров высшей квалификации"
         ],
         "EduOrgShortName": "ГНУ НИИММП"
       },
@@ -4736,7 +4724,7 @@
         "certificate_id": "0b0e110f-1010-0d0f-100f-0e0b0d0c0d10",
         "input_line_number": 1847,
         "EduLevelName_nonempty_distinct": [
-          "ВО - подготовка кадров высшей квалификации"
+          "Высшее образование - подготовка кадров высшей квалификации"
         ],
         "EduOrgShortName": "«Московский Центр дерматовенерологии и косметологии»"
       },
@@ -4744,7 +4732,7 @@
         "certificate_id": "0b0e1110-0a12-0f0a-0b0d-0d11100f0b0d",
         "input_line_number": 1848,
         "EduLevelName_nonempty_distinct": [
-          "ВО - подготовка кадров высшей квалификации"
+          "Высшее образование - подготовка кадров высшей квалификации"
         ],
         "EduOrgShortName": "ФГБНУ «ВНИИГиМ им. А.Н. Костякова»"
       },
@@ -4752,7 +4740,7 @@
         "certificate_id": "0b0e1110-0a12-100f-0a10-1311130c0b0f",
         "input_line_number": 1849,
         "EduLevelName_nonempty_distinct": [
-          "ВО - подготовка кадров высшей квалификации"
+          "Высшее образование - подготовка кадров высшей квалификации"
         ],
         "EduOrgShortName": "ФГБУ «НИИ ОММ» Минздрава России"
       },
@@ -4760,7 +4748,7 @@
         "certificate_id": "0b0e1110-0b13-0b0c-0c0a-0e120e101212",
         "input_line_number": 1850,
         "EduLevelName_nonempty_distinct": [
-          "ВО - подготовка кадров высшей квалификации"
+          "Высшее образование - подготовка кадров высшей квалификации"
         ],
         "EduOrgShortName": "ИЭ УрО РАН"
       },
@@ -4768,7 +4756,7 @@
         "certificate_id": "0b0e1110-0b13-0b0e-0f12-10130c10110e",
         "input_line_number": 1851,
         "EduLevelName_nonempty_distinct": [
-          "ВО - подготовка кадров высшей квалификации"
+          "Высшее образование - подготовка кадров высшей квалификации"
         ],
         "EduOrgShortName": "ФГУП «РНИИРС»"
       },
@@ -4776,7 +4764,7 @@
         "certificate_id": "0b0e1110-1111-0d0d-0c0f-0b0b130d0e0e",
         "input_line_number": 1852,
         "EduLevelName_nonempty_distinct": [
-          "ВО - подготовка кадров высшей квалификации"
+          "Высшее образование - подготовка кадров высшей квалификации"
         ],
         "EduOrgShortName": "ФГБУ ФНЦ ВНИИФК"
       },
@@ -4885,7 +4873,7 @@
         "certificate_id": "0b0e1113-120a-0b10-0f13-0a0d11110b0e",
         "input_line_number": 1863,
         "EduLevelName_nonempty_distinct": [
-          "ВО - подготовка кадров высшей квалификации"
+          "Высшее образование - подготовка кадров высшей квалификации"
         ],
         "EduOrgShortName": "ИПНГ РАН"
       },
@@ -4921,7 +4909,7 @@
         "certificate_id": "0b0e120a-0f0b-0d0e-0e0d-0e100c11110a",
         "input_line_number": 1867,
         "EduLevelName_nonempty_distinct": [
-          "ВО - подготовка кадров высшей квалификации"
+          "Высшее образование - подготовка кадров высшей квалификации"
         ],
         "EduOrgShortName": "ИЭ РАН"
       }
@@ -6659,15 +6647,6 @@
         "EduOrgShortName": "ГБОУ СПО ЛНР \"ЛВУФК\""
       },
       {
-        "certificate_id": "0B101210-100E-1213-0B11-0D120C0D120A110F0B0A",
-        "input_line_number": 3480,
-        "EduLevelName_nonempty_distinct": [
-          "Не определен",
-          "Среднее профессиональное образование"
-        ],
-        "EduOrgShortName": "ГБПОУ «ДППК »"
-      },
-      {
         "certificate_id": "0B101210-1010-0E0C-0A11-110C0D120C0B100D0C0E",
         "input_line_number": 3507,
         "EduLevelName_nonempty_distinct": [
@@ -7311,6 +7290,17 @@
           "Среднее профессиональное образование"
         ],
         "EduOrgShortName": "МБОУ \"Льговская ОШ\""
+      },
+      {
+        "certificate_id": "168db238-91e8-4e04-b3db-f9601726e528",
+        "input_line_number": 6436,
+        "EduLevelName_nonempty_distinct": [
+          "Начальное общее образование",
+          "Основное общее образование",
+          "Среднее общее образование",
+          "Среднее профессиональное образование"
+        ],
+        "EduOrgShortName": "МБОУ «Петровская школа №2»"
       }
     ]
   },
@@ -7696,6 +7686,16 @@
         "Высшее образование - специалитет"
       ],
       "EduOrgShortName": "ФГБНУ «РНЦХ им. акад. Б.В. Петровского»"
+    },
+    {
+      "certificate_id": "0B101210-100E-1213-0B11-0D120C0D120A110F0B0A",
+      "input_line_number": 3480,
+      "program_level_kind": "non_school_levels_only",
+      "empty_EduLevelName_program_count": 1,
+      "nonempty_EduLevelName_distinct": [
+        "Среднее профессиональное образование"
+      ],
+      "EduOrgShortName": "ГБПОУ «ДППК »"
     },
     {
       "certificate_id": "0B101212-100F-130D-0C11-0F0A100F0B0B0D130B0C",

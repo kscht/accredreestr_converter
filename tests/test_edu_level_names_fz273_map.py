@@ -66,8 +66,14 @@ def test_fz273_map_loads_and_covers_vocab() -> None:
         "нет явной записи и строка не в каноне (нечем покрыть implicit identity): "
         f"{missing_explicit_or_implicit}"
     )
-    extra = [s for s in by_source if s not in names]
-    assert not extra, f"лишние source не из vocab: {extra}"
+    # vocab строится по JSONL после convert — в нём только канонические EduLevelName.
+    # entries маппинга могут содержать сырые подписи реестра; они не обязаны входить в vocab.
+    extras_not_in_vocab = [s for s in by_source if s not in names]
+    for s in extras_not_in_vocab:
+        e = by_source[s]
+        tgt = e.get("target_edu_level_name")
+        if tgt is not None:
+            assert tgt in canon_set, f"цель вне канона для source={s!r} -> {tgt!r}"
 
 
 def test_fz273_map_expected_null_and_obschee_resolved() -> None:

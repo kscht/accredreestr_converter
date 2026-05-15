@@ -1,7 +1,7 @@
 {
   "source_jsonl": "out/data-20260403-structure-20160713.jsonl",
   "description_ru": "Сертификаты с пустым корневым StatusName (нет ключа / null / пустая строка); отдельно — вхождения пустого StatusName в элементах Supplements[]. Полные строки: -p/--problem-jsonl (корень или supplement), -f/--full-jsonl (только корень).",
-  "certificate_lines_total": 43725,
+  "certificate_lines_total": 43724,
   "root_StatusName_nullish_lines": 1,
   "root_StatusName_nullish_by_kind": {
     "empty_string": 0,
@@ -11,7 +11,7 @@
   "supplement_StatusName_nullish_hits": 32,
   "certificate_lines_with_any_supplement_StatusName_nullish": 26,
   "certificate_lines_with_StatusName_nullish_root_or_supplement_union": 27,
-  "problem_jsonl_output": "/home/kscht/cursor/obr/accredreestr_converter/examples/certificate_lines_StatusName_nullish.jsonl",
+  "problem_jsonl_output": null,
   "examples_root_StatusName_nullish": [
     {
       "certificate_id": "73f6bb4b-f1e9-a2e5-ab83-9bb9a6c97480",
@@ -277,7 +277,7 @@
     },
     {
       "certificate_id": "de8d60aa-67a0-420a-fe3f-a7fb69626beb",
-      "input_line_number": 38403,
+      "input_line_number": 38402,
       "supplement_index": 0,
       "StatusName_kind": "missing",
       "Supplement_Number": "2",
@@ -286,7 +286,7 @@
     },
     {
       "certificate_id": "de8d60aa-67a0-420a-fe3f-a7fb69626beb",
-      "input_line_number": 38403,
+      "input_line_number": 38402,
       "supplement_index": 2,
       "StatusName_kind": "missing",
       "Supplement_Number": "1",
@@ -295,7 +295,7 @@
     },
     {
       "certificate_id": "df80fb22-7634-8d73-57e8-8d8d43def78c",
-      "input_line_number": 38560,
+      "input_line_number": 38559,
       "supplement_index": 1,
       "StatusName_kind": "missing",
       "Supplement_Number": "1",
@@ -304,7 +304,7 @@
     },
     {
       "certificate_id": "e40b8d26-4231-8c7b-d54c-1a58ba412fef",
-      "input_line_number": 39304,
+      "input_line_number": 39303,
       "supplement_index": 1,
       "StatusName_kind": "missing",
       "Supplement_Number": "2",

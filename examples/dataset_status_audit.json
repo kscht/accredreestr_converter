@@ -1,18 +1,18 @@
 {
   "source_jsonl": "out/data-20260403-structure-20160713.jsonl",
   "description_ru": "Гистограммы корневых полей сертификата StatusName и TypeName. Пусто/null/отсутствие ключа — «<null>».",
-  "certificate_lines_total": 43725,
+  "certificate_lines_total": 43724,
   "histograms": {
     "StatusName": {
       "Действующее": 43114,
-      "Переоформлено": 597,
+      "Переоформлено": 596,
       "Выдан дубликат": 6,
       "Приостановлено": 5,
       "Переоформлено в части приложения": 2,
       "<null>": 1
     },
     "TypeName": {
-      "<null>": 43725
+      "<null>": 43724
     }
   }
 }

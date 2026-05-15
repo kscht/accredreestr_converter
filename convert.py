@@ -35,6 +35,12 @@
 напр. «Среднее общее образование» при ``ProgrammCode`` «--»), в JSONL подставляется ``EduLevelName`` с тем же текстом.
 Отключение: ``--no-fill-edulevel-from-programm-name`` или API ``fill_edulevel_from_programm_name=False``.
 
+Для непустого ``EduLevelName`` после этого применяется маппинг ``specs/edu_level_names_fz273_map.json`` (явные свёртки
+в ``entries``, implicit identity для строк из ``canonical_edu_level_names_fz273`` без записи в ``entries``; при
+``target_edu_level_name``: ``null`` ключ ``EduLevelName`` у программы удаляется). Отключение:
+``--no-normalize-edu-level-names-fz273`` или API ``normalize_edu_level_names_fz273=False``; свой JSON —
+``--edu-level-names-fz273-map-json PATH``.
+
 Отдельные ``Certificate.Id`` из ``CERTIFICATE_IDS_OMITTED_FROM_JSONL_BLOCKLIST`` в JSONL **не попадают** (жёсткий блоклист в коде).
 """
 
@@ -151,6 +157,9 @@ DEFAULT_CERTIFICATE_INN_OVERRIDES_BY_OGRN_FILENAME: Final[str] = (
     "certificate_inn_overrides_by_ogrn.json"
 )
 
+# Маппинг EduLevelName → целевая классификация по ФЗ-273 (specs/)
+DEFAULT_EDU_LEVEL_NAMES_FZ273_MAP_FILENAME: Final[str] = "edu_level_names_fz273_map.json"
+
 _BOOL_TRUE: Final[frozenset[str]] = frozenset(
     {"1", "true", "да", "y", "yes"}
 )
@@ -187,6 +196,11 @@ def default_schema_path() -> Path:
 def default_certificate_inn_overrides_by_ogrn_path() -> Path:
     """Путь к JSON соответствия ОГРН→ИНН для дозаполнения на корне Certificate."""
     return _project_root() / "specs" / DEFAULT_CERTIFICATE_INN_OVERRIDES_BY_OGRN_FILENAME
+
+
+def default_edu_level_names_fz273_map_path() -> Path:
+    """Путь к JSON маппинга ``EduLevelName`` по ФЗ-273 (``specs/edu_level_names_fz273_map.json``)."""
+    return _project_root() / "specs" / DEFAULT_EDU_LEVEL_NAMES_FZ273_MAP_FILENAME
 
 
 def _certificate_id_omitted_by_jsonl_blocklist(record: dict[str, Any]) -> bool:
@@ -821,6 +835,104 @@ def fill_edulevel_name_from_programm_name_when_implied(
                 stats.edulevel_from_programm_name_supplement_programs += 1
 
 
+@dataclass(frozen=True, slots=True)
+class EduLevelNamesFZ273Resolution:
+    """Загруженный ``specs/edu_level_names_fz273_map.json`` для нормализации ``EduLevelName``."""
+
+    explicit_target_by_source: dict[str, str | None]
+    canonical_names: frozenset[str]
+
+
+def load_edu_level_names_fz273_resolution(path: Path) -> EduLevelNamesFZ273Resolution | None:
+    """Читает маппинг ФЗ-273; при ошибке или отсутствии файла возвращает ``None`` (нормализация отключена)."""
+    if not path.is_file():
+        logging.warning(
+            "Файл маппинга EduLevelName (ФЗ-273) не найден, нормализация отключена: %s",
+            path,
+        )
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        logging.warning("Не удалось прочитать маппинг EduLevelName (ФЗ-273) %s: %s", path, exc)
+        return None
+    if not isinstance(data, dict):
+        logging.warning("Маппинг EduLevelName (ФЗ-273) должен быть JSON-объектом: %s", path)
+        return None
+    canon = data.get("canonical_edu_level_names_fz273")
+    if not isinstance(canon, list) or not all(isinstance(x, str) for x in canon):
+        logging.warning("canonical_edu_level_names_fz273 должен быть массивом строк: %s", path)
+        return None
+    entries = data.get("entries")
+    if not isinstance(entries, list):
+        logging.warning("entries должен быть массивом: %s", path)
+        return None
+    explicit: dict[str, str | None] = {}
+    for i, e in enumerate(entries):
+        if not isinstance(e, dict):
+            continue
+        src = e.get("source_registry_level_name")
+        if not isinstance(src, str) or not src.strip():
+            logging.warning("entries[%s]: пропуск без source_registry_level_name (%s)", i, path)
+            continue
+        if src in explicit:
+            logging.warning("entries: дубликат source %r в %s", src, path)
+            continue
+        tgt = e.get("target_edu_level_name")
+        if tgt is None:
+            explicit[src] = None
+        elif isinstance(tgt, str):
+            explicit[src] = tgt.strip() or None
+        else:
+            logging.warning("entries[%s]: target_edu_level_name не строка и не null (%s)", i, path)
+            continue
+    return EduLevelNamesFZ273Resolution(
+        explicit_target_by_source=explicit,
+        canonical_names=frozenset(canon),
+    )
+
+
+def normalize_edu_level_names_via_fz273_map(
+    record: dict[str, Any],
+    res: EduLevelNamesFZ273Resolution,
+    stats: ConversionStats,
+) -> None:
+    """Нормализует ``EduLevelName`` в ``Supplements[].EducationalPrograms[]`` по маппингу ФЗ-273.
+
+    Явная запись в ``entries`` перекрывает implicit identity. ``target_edu_level_name``: ``null`` —
+    ключ ``EduLevelName`` удаляется. Неизвестная непустая строка (нет в ``entries`` и не в каноне)
+    сохраняется без изменения; счётчик ``edulevel_fz273_unknown_level_programs``.
+    """
+    for sup in record.get("Supplements") or []:
+        if not isinstance(sup, dict):
+            continue
+        for pr in sup.get("EducationalPrograms") or []:
+            if not isinstance(pr, dict):
+                continue
+            if "EduLevelName" not in pr:
+                continue
+            v = pr.get("EduLevelName")
+            if v is None:
+                pr.pop("EduLevelName", None)
+                continue
+            raw = v.strip() if isinstance(v, str) else str(v).strip()
+            if not raw:
+                pr.pop("EduLevelName", None)
+                continue
+            if raw in res.explicit_target_by_source:
+                tgt = res.explicit_target_by_source[raw]
+                if tgt is None:
+                    pr.pop("EduLevelName", None)
+                    stats.edulevel_fz273_cleared_programs += 1
+                elif tgt != raw:
+                    pr["EduLevelName"] = tgt
+                    stats.edulevel_fz273_renamed_programs += 1
+                continue
+            if raw in res.canonical_names:
+                continue
+            stats.edulevel_fz273_unknown_level_programs += 1
+
+
 def strip_supplements_by_excluded_status(record: dict[str, Any]) -> int:
     """Удаляет из ``Supplements[]`` элементы, у которых ``StatusName`` в ``SUPPLEMENT_STATUSES_STRIPPED_FROM_JSONL``.
 
@@ -888,6 +1000,9 @@ class ConversionStats:
     supplement_aeo_degenerate_shell_fill_ogrn: int = 0
     supplement_aeo_degenerate_shell_fill_kpp: int = 0
     edulevel_from_programm_name_supplement_programs: int = 0
+    edulevel_fz273_renamed_programs: int = 0
+    edulevel_fz273_cleared_programs: int = 0
+    edulevel_fz273_unknown_level_programs: int = 0
 
     def to_report_dict(
         self,
@@ -968,6 +1083,11 @@ class ConversionStats:
                 "educational_program_EduLevelName_from_ProgrammName_when_empty": (
                     self.edulevel_from_programm_name_supplement_programs
                 ),
+                "educational_program_EduLevelName_fz273_map": {
+                    "renamed_to_canonical_target": self.edulevel_fz273_renamed_programs,
+                    "cleared_null_target": self.edulevel_fz273_cleared_programs,
+                    "unknown_registry_level_programs": self.edulevel_fz273_unknown_level_programs,
+                },
                 "elapsed_seconds": round(elapsed, 3),
             },
         }
@@ -1004,6 +1124,7 @@ def convert_one(
     fill_aeo_coherent_inn_ogrn: bool = True,
     fill_edulevel_from_programm_name: bool = True,
     manual_inn_by_ogrn: dict[str, str] | None = None,
+    edu_level_fz273: EduLevelNamesFZ273Resolution | None = None,
 ) -> None:
     """Конвертирует один XML-файл, дописывая строки JSON в открытый файловый объект."""
     _ = schema_path  # зарезервировано для расширений / совместимости API
@@ -1051,6 +1172,8 @@ def convert_one(
                     fill_degenerate_supplement_aeo_identity_from_certificate_donors(record, stats)
                 if fill_edulevel_from_programm_name:
                     fill_edulevel_name_from_programm_name_when_implied(record, stats)
+                if edu_level_fz273 is not None:
+                    normalize_edu_level_names_via_fz273_map(record, edu_level_fz273, stats)
                 if omit_inactive and (
                     record.get("StatusName") in CERTIFICATE_ROOT_STATUSES_OMITTED_FROM_JSONL
                 ):
@@ -1112,6 +1235,8 @@ def convert_many(
     fill_edulevel_from_programm_name: bool = True,
     certificate_inn_overrides_by_ogrn: bool = True,
     certificate_inn_overrides_by_ogrn_json: Path | None = None,
+    normalize_edu_level_names_fz273: bool = True,
+    edu_level_names_fz273_map_json: Path | None = None,
 ) -> ConversionStats:
     """Конвертирует один или несколько входных XML.
 
@@ -1148,6 +1273,11 @@ def convert_many(
             ступеней ``PROGRAMM_NAMES_THAT_IMPLY_EQUAL_EDU_LEVEL_NAME``. По умолчанию **True**;
             отключить — ``fill_edulevel_from_programm_name=False`` или CLI
             ``--no-fill-edulevel-from-programm-name``.
+        normalize_edu_level_names_fz273: Если True, после этого нормализовать непустой **EduLevelName**
+            по ``specs/edu_level_names_fz273_map.json`` (или путь из ``edu_level_names_fz273_map_json``).
+            По умолчанию **True**; отключить — ``normalize_edu_level_names_fz273=False`` или CLI
+            ``--no-normalize-edu-level-names-fz273``.
+        edu_level_names_fz273_map_json: Явный путь к JSON маппинга; при ``None`` — ``specs/edu_level_names_fz273_map.json``.
         certificate_inn_overrides_by_ogrn: Если True, после автоматических дозаполнений ИНН
             применять JSON ``specs/certificate_inn_overrides_by_ogrn.json`` (или путь из
             ``certificate_inn_overrides_by_ogrn_json``): ОГРН→ИНН для пустых **EduOrgINN** / INN корневой AEO.
@@ -1170,6 +1300,20 @@ def convert_many(
                 "Справочник ИНН по ОГРН: %s записей (%s)",
                 len(manual_inn_by_ogrn),
                 ogrn_json_path,
+            )
+
+    edu_level_fz273: EduLevelNamesFZ273Resolution | None = None
+    if normalize_edu_level_names_fz273:
+        fz273_path = (
+            edu_level_names_fz273_map_json or default_edu_level_names_fz273_map_path()
+        ).resolve()
+        edu_level_fz273 = load_edu_level_names_fz273_resolution(fz273_path)
+        if edu_level_fz273 is not None:
+            logging.info(
+                "Маппинг EduLevelName (ФЗ-273): %s явных source, %s имён в каноне (%s)",
+                len(edu_level_fz273.explicit_target_by_source),
+                len(edu_level_fz273.canonical_names),
+                fz273_path,
             )
 
     if not merged:
@@ -1196,6 +1340,7 @@ def convert_many(
                     fill_aeo_coherent_inn_ogrn=fill_aeo_coherent_inn_ogrn,
                     fill_edulevel_from_programm_name=fill_edulevel_from_programm_name,
                     manual_inn_by_ogrn=manual_inn_by_ogrn,
+                    edu_level_fz273=edu_level_fz273,
                 )
     else:
         if output is None:
@@ -1219,6 +1364,7 @@ def convert_many(
                     fill_aeo_coherent_inn_ogrn=fill_aeo_coherent_inn_ogrn,
                     fill_edulevel_from_programm_name=fill_edulevel_from_programm_name,
                     manual_inn_by_ogrn=manual_inn_by_ogrn,
+                    edu_level_fz273=edu_level_fz273,
                 )
 
     return stats
@@ -1374,6 +1520,24 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--no-normalize-edu-level-names-fz273",
+        action="store_true",
+        help=(
+            "Не нормализовать непустой EduLevelName в EducationalPrograms по JSON "
+            "specs/edu_level_names_fz273_map.json (цели по ФЗ-273)"
+        ),
+    )
+    p.add_argument(
+        "--edu-level-names-fz273-map-json",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help=(
+            "Путь к JSON маппинга EduLevelName по ФЗ-273; по умолчанию "
+            "specs/edu_level_names_fz273_map.json в каталоге проекта"
+        ),
+    )
+    p.add_argument(
         "--certificate-inn-overrides-by-ogrn-json",
         type=Path,
         default=None,
@@ -1454,6 +1618,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     if cert_inn_ov_json is not None:
         cert_inn_ov_json = cert_inn_ov_json.resolve()
 
+    fz273_json = args.edu_level_names_fz273_map_json
+    if fz273_json is not None:
+        fz273_json = fz273_json.resolve()
+
     t0 = time.perf_counter()
     try:
         stats = convert_many(
@@ -1473,6 +1641,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             fill_edulevel_from_programm_name=not bool(args.no_fill_edulevel_from_programm_name),
             certificate_inn_overrides_by_ogrn=not bool(args.no_certificate_inn_overrides_by_ogrn),
             certificate_inn_overrides_by_ogrn_json=cert_inn_ov_json,
+            normalize_edu_level_names_fz273=not bool(args.no_normalize_edu_level_names_fz273),
+            edu_level_names_fz273_map_json=fz273_json,
         )
     except ValueError as ve:
         logging.error("%s", ve)

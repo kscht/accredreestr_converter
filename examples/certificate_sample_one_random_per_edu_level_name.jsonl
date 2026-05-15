@@ -1,5 +1,3 @@
-{"EduLevelName": "ВО - бакалавриат", "programs": [{"ProgrammName": "Педагогическое образование", "ProgrammCode": "05.01.00", "UGSName": "Образование и педагогика", "UGSCode": "05.00.00"}]}
-{"EduLevelName": "ВО - подготовка кадров высшей квалификации", "programs": [{"ProgrammName": "Акушерство и гинекология", "ProgrammCode": "31.08.01", "UGSName": "Клиническая медицина", "UGSCode": "31.00.00"}]}
 {"EduLevelName": "Высшее образование - бакалавриат", "programs": [{"ProgrammName": "Торговое дело", "ProgrammCode": "38.03.06", "UGSName": "Экономика и управление", "UGSCode": "38.00.00", "IsAccredited": true}]}
 {"EduLevelName": "Высшее образование - магистратура", "programs": [{"ProgrammName": "Государственное и муниципальное управление", "ProgrammCode": "38.04.04", "UGSName": "Экономика и управление", "UGSCode": "38.00.00", "IsAccredited": true}]}
 {"EduLevelName": "Высшее образование - подготовка кадров высшей квалификации", "programs": [{"ProgrammName": "Экономика", "ProgrammCode": "38.06.01", "UGSName": "Экономика и управление", "UGSCode": "38.00.00", "IsAccredited": true}]}
@@ -7,13 +5,6 @@
 {"EduLevelName": "Дополнительное профессиональное образование", "programs": [{"EduLevelName": "Дополнительное профессиональное образование"}]}
 {"EduLevelName": "Дошкольное образование", "programs": [{"EduLevelName": "Дошкольное образование"}]}
 {"EduLevelName": "Начальное общее образование", "programs": [{"ProgrammName": "Начального общего образования", "IsAccredited": true}]}
-{"EduLevelName": "Начальное профессиональное образование", "programs": [{"EduLevelName": "Начальное профессиональное образование"}]}
-{"EduLevelName": "Не определен", "programs": [{"EduLevelName": "Не определен"}]}
-{"EduLevelName": "Общее образование", "programs": [{"EduLevelName": "Общее образование"}]}
 {"EduLevelName": "Основное общее образование", "programs": [{"ProgrammName": "Основное общее образование", "UGSName": "Без деления на угс/отрасли", "IsAccredited": true}]}
-{"EduLevelName": "Профессиональное образование", "programs": [{"EduLevelName": "Профессиональное образование"}]}
-{"EduLevelName": "Профессиональное обучение", "programs": [{"EduLevelName": "Профессиональное обучение"}]}
-{"EduLevelName": "Среднее (полное) общее образование", "programs": [{"ProgrammName": "Среднее (полное) общее образование"}]}
 {"EduLevelName": "Среднее общее образование", "programs": [{"ProgrammName": "Среднее общее образование", "ProgrammCode": "--", "UGSName": "Без деления на угс/отрасли", "IsAccredited": true}]}
 {"EduLevelName": "Среднее профессиональное образование", "programs": [{"ProgrammName": "Гостиничное дело", "ProgrammCode": "43.02.14", "UGSName": "Сервис и туризм", "UGSCode": "43.00.00", "IsAccredited": true}]}
-{"EduLevelName": "Среднее профессиональное образование (базовая подготовка)", "programs": [{"ProgrammName": "Конструирование, моделирование и технология изделий из кожи", "ProgrammCode": "26.20.17", "UGSName": "Технология продовольственных продуктов и потребительских товаров", "UGSCode": "26.00.00"}]}

@@ -11,7 +11,9 @@
 - без сертификатов, чей **`Certificate.Id`** входит в **`convert.CERTIFICATE_IDS_OMITTED_FROM_JSONL_BLOCKLIST`** (жёсткий список в коде; в отчёте **`omitted_certificate_personal_blocklist`**);
 - без ключей со значением **`null`**, пустой строкой и пустыми **`{}`** / **`[]`** после нормализации (**`omit_null_keys`**);
 - с дозаполнением при **`fill_aeo_coherent_inn_ogrn`** (по умолчанию): **INN** / **OGRN** / **KPP** в **`ActualEducationOrganization`** (корень и **`Supplements[]`**) из согласованных доноров, ветка «филиал по `Id`», подъём **EduOrgINN**/**EduOrgOGRN** с корня/supplement, «оболочки» supplement AEO без цифровых ИНН/ОГРН; отключение: **`--no-fill-aeo-coherent-inn-ogrn`**;
-- с ручным JSON **ОГРН→ИНН** по умолчанию из **`specs/certificate_inn_overrides_by_ogrn.json`**, если файл есть; отключение: **`--no-certificate-inn-overrides-by-ogrn`**, свой путь: **`--certificate-inn-overrides-by-ogrn-json`**.
+- с ручным JSON **ОГРН→ИНН** по умолчанию из **`specs/certificate_inn_overrides_by_ogrn.json`**, если файл есть; отключение: **`--no-certificate-inn-overrides-by-ogrn`**, свой путь: **`--certificate-inn-overrides-by-ogrn-json`**;
+- при пустом **`EduLevelName`** у программы — подстановка из **`ProgrammName`** для школьных ступеней (`PROGRAMM_NAMES_THAT_IMPLY_EQUAL_EDU_LEVEL_NAME`); отключение: **`--no-fill-edulevel-from-programm-name`**;
+- для **непустого** **`EduLevelName`** — нормализация по **`specs/edu_level_names_fz273_map.json`** (ФЗ-273); отключение: **`--no-normalize-edu-level-names-fz273`**, свой JSON: **`--edu-level-names-fz273-map-json`**.
 
 Полный снимок как в XML по статусу, региону и полям: **`--include-inactive`**, **`--include-outside-rf-region`**, **`--include-null-keys`**.
 
@@ -47,7 +49,7 @@
 | **`audit_aeo_supplement_root_id_with_identity_issues.py`** | Только строки, где есть **хотя бы одна** проблема с полями идентичности (те же критерии, что у **`audit_dataset_identity_fields.py`**): разрез карточек supplement AEO по **`Id` = / ≠ / несравнимо** с **`Id`** корневой AEO; отдельно — только карточки с проблемой **INN** или **OGRN** в приложении. | `examples/dataset_aeo_supplement_root_id_identity_issues.json` |
 | **`registry_status_vocab.py`** | Уникальные **`StatusName`** на корне **`Certificate`** и в **`Supplements[]`**: гистограммы, отсортированные наборы, **по одному примеру** (`certificate_id`, индекс supplement) на каждое значение (первое вхождение в файле). | `examples/registry_status_names_vocab.json` |
 | **`extract_unique_edu_level_names.py`** | Уникальные непустые **`EduLevelName`** в **`Supplements[].EducationalPrograms[]`**: отсортированный список, гистограмма, счётчики (в т.ч. пустые уровни). Выход в репозитории — **`specs/edu_level_names_vocab.json`**. | `specs/edu_level_names_vocab.json` |
-| **(справочник)** | **`specs/edu_level_names_fz273_map.json`** — канон ФЗ-273 и **`entries`**: только несовпадения источник→цель и `null`; строка из vocab, совпадающая с именем канона и **без** записи в **`entries`**, — неявный **identity**. Покрытие — **`tests/test_edu_level_names_fz273_map.py`**. В **`convert.py`** не используется. Примеры полных строк: **`examples/certificate_lines_edu_level_name_obschee_obrazovanie_sample.jsonl`**, **`examples/certificate_lines_edu_level_name_professionalnoe_obuchenie_sample.jsonl`**, **`examples/certificate_lines_edu_level_name_professionalnoe_obrazovanie_sample.jsonl`**. | `specs/edu_level_names_fz273_map.json` |
+| **(справочник)** | **`specs/edu_level_names_fz273_map.json`** — канон ФЗ-273 и **`entries`**: только несовпадения источник→цель и `null`; строка из vocab, совпадающая с именем канона и **без** записи в **`entries`**, — неявный **identity**. Покрытие — **`tests/test_edu_level_names_fz273_map.py`**. В **`convert.py`** по умолчанию нормализует **`EducationalPrograms[].EduLevelName`**. Примеры полных строк: **`examples/certificate_lines_edu_level_name_obschee_obrazovanie_sample.jsonl`**, **`examples/certificate_lines_edu_level_name_professionalnoe_obuchenie_sample.jsonl`**, **`examples/certificate_lines_edu_level_name_professionalnoe_obrazovanie_sample.jsonl`**. | `specs/edu_level_names_fz273_map.json` |
 | **`sample_one_certificate_per_edu_level_name.py`** | На каждый уровень из **`unique_edu_level_names`** — одна выборка: по умолчанию сертификат с **наибольшей заполненностью** (при равенстве — случайный tie, **`--seed`**). Выход: **`EduLevelName`**, **`programs`** из одного объекта (первая подходящая программа; `EduLevelName` в объекте не дублируется при наличии других полей). **`--uniform-random`** — без приоритета заполненности. | `examples/certificate_sample_one_random_per_edu_level_name.jsonl` |
 | **`audit_dataset_status.py`** | Гистограммы корневых **`StatusName`**, **`TypeName`** | `examples/dataset_status_audit.json` |
 | **`audit_dataset_null_statusname.py`** | Сертификаты и элементы **`Supplements[]`**, где **`StatusName`** отсутствует, **`null`** или пустая строка: счётчики, примеры (**`--limit`**), объединение по строке в отчёте; полные строки входа: **`-p`** / **`--problem-jsonl`** [PATH] (корень **или** supplement); **без PATH после `-p`** — **`examples/certificate_lines_StatusName_nullish.jsonl`**; **`-f`** (только корень) | `examples/dataset_null_statusname_audit.json` |
@@ -57,6 +59,33 @@
 | **`audit_branch_supplement_aeo_inn_gap.py`** | Сводка по JSONL из **`extract_branch_supplement_aeo_inn_gap_jsonl.py`**: OGRN-дыра при доноре сверху, **`HeadEduOrgId`**, гистограмма **`IsForBranch`**, сверка **`donor_inn_digits`**. | `examples/dataset_branch_supplement_aeo_inn_gap_audit.json` |
 | **`analyze_aeo_cert_vs_supplement.py`** | Сравнение **`Id`** у **`ActualEducationOrganization`** на корне и в приложениях; срезы «интересных» строк | `examples/jsonl_samples_aeo_mismatch/sample_*.jsonl` |
 | **`scan_jsonl_placeholder_scalars.py`** | Подсчёт скалярных плейсхолдеров по путям в JSON | см. `--help` |
+
+### Внимание: `audit_dataset_edu_program_levels.py` и путь вывода
+
+У скрипта **ровно один** позиционный аргумент — входной JSONL сертификатов. У флагов **`-p`**, **`--school-jsonl`**, **`--mixed-jsonl`**, **`--empty-level-jsonl`**, **`--empty-program-jsonl`** опциональный `PATH` открывается на **запись**. Если передать **тот же путь**, что и у входного JSONL (например, дублируя путь в командной строке), входной файл будет **перезаписан** и испорчен. Правильно: **`python3 tools/audit_dataset_edu_program_levels.py out/data-….jsonl --empty-program-jsonl`** (без второго пути — по умолчанию **`examples/edu_programs_empty_EduLevelName.jsonl`**) или отдельный выходной файл.
+
+### Пересборка аналитики после полного `convert`
+
+Из корня репозитория, подставив свой путь к JSONL (типично **`out/data-YYYYMMDD-structure-20160713.jsonl`** после **`convert.py`**):
+
+```bash
+J=out/data-20260403-structure-20160713.jsonl
+python3 tools/audit_dataset_identity_fields.py "$J"
+python3 tools/audit_aeo_supplement_root_id_with_identity_issues.py "$J"
+python3 tools/registry_status_vocab.py "$J"
+python3 tools/extract_unique_edu_level_names.py "$J"
+python3 tools/audit_dataset_status.py "$J"
+python3 tools/audit_dataset_null_statusname.py "$J"
+python3 tools/audit_dataset_edu_program_levels.py "$J" --empty-program-jsonl
+python3 tools/audit_dataset_region.py "$J"
+python3 tools/extract_branch_supplement_aeo_inn_gap_jsonl.py "$J"
+python3 tools/audit_branch_supplement_aeo_inn_gap.py examples/branch_supplement_aeo_inn_gap.jsonl
+python3 tools/analyze_aeo_cert_vs_supplement.py "$J"
+python3 tools/sample_one_certificate_per_edu_level_name.py "$J"
+python3 tools/generate_test_jsonl_samples.py "$J"
+```
+
+Каталоги **`examples/jsonl_samples/`** и **`examples/jsonl_samples_aeo_mismatch/`** в **`.gitignore`** (артефакты подвыборок локально). Крупный **`examples/branch_supplement_aeo_inn_gap.jsonl`** тоже в **`.gitignore`**.
 
 После смены логики нормализации идентификаторов **или** дозаполнения AEO в **`convert.py`** пересоберите JSONL и заново запустите аудиты (**`audit_dataset_identity_fields.py`**, при необходимости регион/статус/**`audit_dataset_null_statusname.py`**/**`audit_dataset_edu_program_levels.py`**/AEO), чтобы **`examples/dataset_*_audit.json`** и счётчики **`nonempty_not_digits_only_after_clean`** / **`*borrowable*`** отражали текущий снимок. Выборку «филиал / пустой INN в supplement» пересобирайте **`extract_branch_supplement_aeo_inn_gap_jsonl.py`**, затем **`audit_branch_supplement_aeo_inn_gap.py`** (см. **`.gitignore`** для крупного **`examples/branch_supplement_aeo_inn_gap.jsonl`**).
 

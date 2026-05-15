@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenData>
+  <Certificates>
+    <Certificate>
+      <Id>fz273-norm-test</Id>
+      <IsFederal>0</IsFederal>
+      <StatusName>Действующее</StatusName>
+      <RegionName>Москва</RegionName>
+      <EduOrgOGRN>1027700132195</EduOrgOGRN>
+      <Supplements>
+        <Supplement>
+          <Id>sup-fz273</Id>
+          <EducationalPrograms>
+            <EducationalProgram>
+              <Id>p-obschee</Id>
+              <EduLevelName>Общее образование</EduLevelName>
+            </EducationalProgram>
+            <EducationalProgram>
+              <Id>p-vo-abbr</Id>
+              <EduLevelName>ВО - бакалавриат</EduLevelName>
+            </EducationalProgram>
+            <EducationalProgram>
+              <Id>p-soo</Id>
+              <EduLevelName>Среднее общее образование</EduLevelName>
+            </EducationalProgram>
+            <EducationalProgram>
+              <Id>p-ne-opred</Id>
+              <EduLevelName>Не определен</EduLevelName>
+            </EducationalProgram>
+          </EducationalPrograms>
+        </Supplement>
+      </Supplements>
+    </Certificate>
+  </Certificates>
+</OpenData>
