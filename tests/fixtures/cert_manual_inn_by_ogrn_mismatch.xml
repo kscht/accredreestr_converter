@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenData>
+  <Certificates>
+    <Certificate>
+      <Id>cert-manual-inn-mismatch</Id>
+      <IsFederal>0</IsFederal>
+      <StatusName>Действующее</StatusName>
+      <RegionName>Москва</RegionName>
+      <EduOrgOGRN>1027700333003</EduOrgOGRN>
+      <ActualEducationOrganization>
+        <Id>aeo-mismatch</Id>
+        <OGRN>1026700630615</OGRN>
+      </ActualEducationOrganization>
+    </Certificate>
+  </Certificates>
+</OpenData>

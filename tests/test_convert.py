@@ -533,6 +533,61 @@ def test_inactive_excluded_by_default(tmp_path: Path) -> None:
     assert stats.per_file["inactive_mixed.xml"]["omitted_inactive"] == 1
 
 
+def test_root_prekrashcheno_lish_usually_omitted(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    stats = c.convert_many(
+        [FIXTURES / "status_root_omitted_mixed.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+    )
+    rows = _read_jsonl(out)
+    assert {r["Id"] for r in rows} == {"ok-act"}
+    assert stats.per_file["status_root_omitted_mixed.xml"]["omitted_inactive"] == 2
+
+
+def test_supplement_status_strip_by_default(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    stats = c.convert_many(
+        [FIXTURES / "supplement_status_strip_mixed.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+    )
+    rows = _read_jsonl(out)
+    assert len(rows) == 1
+    sups = rows[0].get("Supplements") or []
+    assert len(sups) == 1
+    assert sups[0].get("Number") == "1"
+    assert stats.per_file["supplement_status_strip_mixed.xml"]["stripped_supplements_by_status"] == 2
+
+
+def test_supplement_strip_off_with_include_inactive(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    stats = c.convert_many(
+        [FIXTURES / "supplement_status_strip_mixed.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+        omit_inactive=False,
+    )
+    rows = _read_jsonl(out)
+    assert len(rows[0].get("Supplements") or []) == 3
+    assert stats.per_file["supplement_status_strip_mixed.xml"].get("stripped_supplements_by_status", 0) == 0
+
+
 def test_include_inactive_full_snapshot_via_api(tmp_path: Path) -> None:
     out = tmp_path / "o.jsonl"
     stats = c.convert_many(
@@ -794,6 +849,44 @@ def test_fill_aeo_coherent_root_inn_from_supplement_api(tmp_path: Path) -> None:
     assert row["ActualEducationOrganization"]["INN"] == "770000000066"
 
 
+def test_fill_aeo_branch_diff_uid_supplement_inn_ogrn_from_root(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    stats = c.convert_many(
+        [FIXTURES / "aeo_coherent_fill_branch_diff_uid.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+    )
+    row = _read_jsonl(out)[0]
+    sup_aeo = row["Supplements"][0]["ActualEducationOrganization"]
+    assert sup_aeo["INN"] == "770000000088"
+    assert sup_aeo["OGRN"] == "1027700880888"
+    assert stats.aeo_branch_id_mismatch_fill_supplement_inn == 1
+    assert stats.aeo_branch_id_mismatch_fill_supplement_ogrn == 1
+
+
+def test_fill_aeo_branch_diff_uid_disabled_with_no_fill_flag(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    c.convert_many(
+        [FIXTURES / "aeo_coherent_fill_branch_diff_uid.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+        fill_aeo_coherent_inn_ogrn=False,
+    )
+    row = _read_jsonl(out)[0]
+    assert "INN" not in row["Supplements"][0]["ActualEducationOrganization"]
+    assert "OGRN" not in row["Supplements"][0]["ActualEducationOrganization"]
+
+
 def test_fill_aeo_coherent_disabled_via_api(tmp_path: Path) -> None:
     out = tmp_path / "o.jsonl"
     c.convert_many(
@@ -865,6 +958,378 @@ def test_report_contains_aeo_coherent_fill_counts(tmp_path: Path) -> None:
     fills = data["total"]["aeo_coherent_inn_ogrn_fills"]
     assert fills["supplement_ActualEducationOrganization_INN"] >= 1
     assert fills["root_ActualEducationOrganization_INN"] >= 1
+    assert fills.get("supplement_ActualEducationOrganization_INN_branch_Id_not_root", 0) == 0
+    back = data["total"]["certificate_EduOrg_inn_ogrn_backfill_from_near_aeo"]
+    assert back["EduOrgINN_from_root_AEO"] == 0
+    assert back["EduOrgINN_from_supplement_same_uid_AEO"] == 0
+
+
+def test_cert_eduorg_inn_ogrn_backfill_from_root_aeo_when_no_supplements(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    stats = c.convert_many(
+        [FIXTURES / "cert_eduorg_backfill_root_only.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+    )
+    row = _read_jsonl(out)[0]
+    assert row["EduOrgINN"] == "770000000333"
+    assert row["EduOrgOGRN"] == "1027700333003"
+    assert stats.cert_eduorg_inn_backfill_from_root_aeo == 1
+    assert stats.cert_eduorg_ogrn_backfill_from_root_aeo == 1
+    assert stats.cert_eduorg_inn_backfill_from_supplement_same_uid_aeo == 0
+
+
+def test_cert_eduorg_inn_ogrn_backfill_prefers_supplement_same_uid(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    stats = c.convert_many(
+        [FIXTURES / "cert_eduorg_backfill_from_supplement_same_uid.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+    )
+    row = _read_jsonl(out)[0]
+    assert row["EduOrgINN"] == "770000000055"
+    assert row["EduOrgOGRN"] == "1027700000999"
+    assert stats.cert_eduorg_inn_backfill_from_supplement_same_uid_aeo == 1
+    assert stats.cert_eduorg_ogrn_backfill_from_supplement_same_uid_aeo == 1
+
+
+def test_no_fill_skips_certificate_eduorg_backfill(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    c.convert_many(
+        [FIXTURES / "cert_eduorg_backfill_root_only.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+        fill_aeo_coherent_inn_ogrn=False,
+    )
+    row = _read_jsonl(out)[0]
+    assert "EduOrgINN" not in row
+    assert "EduOrgOGRN" not in row
+
+
+def test_report_branch_diff_uid_fill_counts(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    rep = tmp_path / "rep.json"
+    proc = _run_convert_cli(
+        [
+            str(FIXTURES / "aeo_coherent_fill_branch_diff_uid.xml"),
+            "-o",
+            str(out),
+            "--report",
+            str(rep),
+            "--schema",
+            str(SCHEMA),
+            "--progress-every",
+            "0",
+        ]
+    )
+    assert proc.returncode == 0
+    data = json.loads(rep.read_text(encoding="utf-8"))
+    fills = data["total"]["aeo_coherent_inn_ogrn_fills"]
+    assert fills["supplement_ActualEducationOrganization_INN_branch_Id_not_root"] == 1
+    assert fills["supplement_ActualEducationOrganization_OGRN_branch_Id_not_root"] == 1
+
+def test_report_contains_stripped_supplements_count(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    rep = tmp_path / "rep.json"
+    proc = _run_convert_cli(
+        [
+            str(FIXTURES / "supplement_status_strip_mixed.xml"),
+            "-o",
+            str(out),
+            "--report",
+            str(rep),
+            "--schema",
+            str(SCHEMA),
+            "--progress-every",
+            "0",
+        ]
+    )
+    assert proc.returncode == 0
+    data = json.loads(rep.read_text(encoding="utf-8"))
+    assert data["total"]["stripped_supplements_by_status"] == 2
+
+
+def test_apply_certificate_inn_from_manual_ogrn_map_unit() -> None:
+    stats = c.ConversionStats()
+    row: dict = {
+        "EduOrgOGRN": "1026700630615",
+        "ActualEducationOrganization": {"Id": "x", "OGRN": "1026700630615"},
+    }
+    c.apply_certificate_inn_from_manual_ogrn_map(row, {"1026700630615": "6712005793"}, stats)
+    assert row["EduOrgINN"] == "6712005793"
+    assert row["ActualEducationOrganization"]["INN"] == "6712005793"
+    assert stats.cert_inn_manual_override_by_ogrn_records == 1
+    assert stats.cert_inn_manual_override_by_ogrn_eduorg_inn == 1
+    assert stats.cert_inn_manual_override_by_ogrn_root_aeo_inn == 1
+
+
+def test_apply_certificate_inn_from_manual_ogrn_map_partial_root_inn_present() -> None:
+    stats = c.ConversionStats()
+    row = {
+        "EduOrgOGRN": "1026700630615",
+        "ActualEducationOrganization": {
+            "Id": "x",
+            "INN": "2222222222",
+            "OGRN": "1026700630615",
+        },
+    }
+    c.apply_certificate_inn_from_manual_ogrn_map(row, {"1026700630615": "6712005793"}, stats)
+    assert row["EduOrgINN"] == "6712005793"
+    assert row["ActualEducationOrganization"]["INN"] == "2222222222"
+    assert stats.cert_inn_manual_override_by_ogrn_records == 1
+    assert stats.cert_inn_manual_override_by_ogrn_eduorg_inn == 1
+    assert stats.cert_inn_manual_override_by_ogrn_root_aeo_inn == 0
+
+
+def test_apply_certificate_inn_from_manual_ogrn_map_no_overwrite() -> None:
+    stats = c.ConversionStats()
+    row = {
+        "EduOrgINN": "1111111111",
+        "EduOrgOGRN": "1026700630615",
+        "ActualEducationOrganization": {
+            "Id": "x",
+            "INN": "2222222222",
+            "OGRN": "1026700630615",
+        },
+    }
+    c.apply_certificate_inn_from_manual_ogrn_map(row, {"1026700630615": "6712005793"}, stats)
+    assert row["EduOrgINN"] == "1111111111"
+    assert row["ActualEducationOrganization"]["INN"] == "2222222222"
+    assert stats.cert_inn_manual_override_by_ogrn_records == 0
+
+
+def test_apply_certificate_inn_from_manual_ogrn_map_skips_conflicting_ogrn() -> None:
+    stats = c.ConversionStats()
+    row = {
+        "EduOrgOGRN": "1027700333003",
+        "ActualEducationOrganization": {"Id": "x", "OGRN": "1026700630615"},
+    }
+    c.apply_certificate_inn_from_manual_ogrn_map(row, {"1026700630615": "6712005793"}, stats)
+    assert "EduOrgINN" not in row
+    assert "INN" not in row["ActualEducationOrganization"]
+    assert stats.cert_inn_manual_override_by_ogrn_records == 0
+
+
+def test_load_certificate_inn_overrides_skips_meta_keys(tmp_path: Path) -> None:
+    p = tmp_path / "ov.json"
+    p.write_text(
+        '{"_comment": "x", "1026700630615": "6712005793"}',
+        encoding="utf-8",
+    )
+    m = c._load_certificate_inn_overrides_by_ogrn(p)
+    assert m == {"1026700630615": "6712005793"}
+
+
+def test_load_certificate_inn_overrides_non_object(tmp_path: Path) -> None:
+    p = tmp_path / "ov.json"
+    p.write_text("[1,2]", encoding="utf-8")
+    assert c._load_certificate_inn_overrides_by_ogrn(p) == {}
+
+
+def test_cert_manual_inn_by_ogrn_fixture_uses_specs_map(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    stats = c.convert_many(
+        [FIXTURES / "cert_manual_inn_by_ogrn.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+    )
+    row = _read_jsonl(out)[0]
+    assert row["EduOrgINN"] == "6712005793"
+    assert row["ActualEducationOrganization"]["INN"] == "6712005793"
+    assert stats.cert_inn_manual_override_by_ogrn_records == 1
+
+
+def test_cert_manual_inn_by_ogrn_api_disabled(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    c.convert_many(
+        [FIXTURES / "cert_manual_inn_by_ogrn.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+        certificate_inn_overrides_by_ogrn=False,
+    )
+    row = _read_jsonl(out)[0]
+    assert "EduOrgINN" not in row
+    assert "INN" not in row["ActualEducationOrganization"]
+
+
+def test_cert_manual_inn_by_ogrn_still_applies_when_aeo_fill_disabled(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    stats = c.convert_many(
+        [FIXTURES / "cert_manual_inn_by_ogrn.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+        fill_aeo_coherent_inn_ogrn=False,
+    )
+    row = _read_jsonl(out)[0]
+    assert row["EduOrgINN"] == "6712005793"
+    assert row["ActualEducationOrganization"]["INN"] == "6712005793"
+    assert stats.cert_inn_manual_override_by_ogrn_records == 1
+
+
+def test_cert_manual_inn_by_ogrn_mismatch_no_fill(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    stats = c.convert_many(
+        [FIXTURES / "cert_manual_inn_by_ogrn_mismatch.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+    )
+    row = _read_jsonl(out)[0]
+    assert "EduOrgINN" not in row
+    assert "INN" not in row["ActualEducationOrganization"]
+    assert stats.cert_inn_manual_override_by_ogrn_records == 0
+
+
+def test_certificate_personal_blocklist_unit() -> None:
+    assert c._certificate_id_omitted_by_jsonl_blocklist(
+        {"Id": "C68F57A6-E846-F050-FBA2-011A5F71AB8C"}
+    )
+    assert not c._certificate_id_omitted_by_jsonl_blocklist({"Id": "min-1"})
+    assert not c._certificate_id_omitted_by_jsonl_blocklist({})
+
+
+def test_certificate_personal_blocklist_pair_fixture(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    stats = c.convert_many(
+        [FIXTURES / "certificate_personal_blocklist_pair.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+    )
+    rows = _read_jsonl(out)
+    assert len(rows) == 1
+    assert rows[0]["Id"] == "min-after-blocklist"
+    assert (
+        stats.per_file["certificate_personal_blocklist_pair.xml"][
+            "omitted_certificate_personal_blocklist"
+        ]
+        == 1
+    )
+
+
+def test_fill_degenerate_supplement_aeo_identity_unit() -> None:
+    stats = c.ConversionStats()
+    row: dict = {
+        "EduOrgINN": "770000000333",
+        "EduOrgOGRN": "1027700333003",
+        "EduOrgKPP": "770301001",
+        "ActualEducationOrganization": {
+            "Id": "r1",
+            "INN": "770000000333",
+            "OGRN": "1027700333003",
+            "KPP": "770301001",
+        },
+        "Supplements": [
+            {
+                "StatusName": "Действующее",
+                "ActualEducationOrganization": {"RegionName": "Москва"},
+            }
+        ],
+    }
+    c.fill_degenerate_supplement_aeo_identity_from_certificate_donors(row, stats)
+    saeo = row["Supplements"][0]["ActualEducationOrganization"]
+    assert saeo["INN"] == "770000000333"
+    assert saeo["OGRN"] == "1027700333003"
+    assert saeo["KPP"] == "770301001"
+    assert stats.supplement_aeo_degenerate_shell_records == 1
+    assert stats.supplement_aeo_degenerate_shell_fill_inn == 1
+    assert stats.supplement_aeo_degenerate_shell_fill_ogrn == 1
+    assert stats.supplement_aeo_degenerate_shell_fill_kpp == 1
+
+
+def test_fill_degenerate_supplement_aeo_identity_skips_when_inn_present() -> None:
+    stats = c.ConversionStats()
+    row = {
+        "ActualEducationOrganization": {"Id": "r", "INN": "1", "OGRN": "2"},
+        "Supplements": [
+            {"ActualEducationOrganization": {"RegionName": "X", "INN": "9999999999"}},
+        ],
+    }
+    c.fill_degenerate_supplement_aeo_identity_from_certificate_donors(row, stats)
+    assert row["Supplements"][0]["ActualEducationOrganization"]["INN"] == "9999999999"
+    assert stats.supplement_aeo_degenerate_shell_records == 0
+
+
+def test_supplement_aeo_degenerate_shell_fixture(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    stats = c.convert_many(
+        [FIXTURES / "supplement_aeo_degenerate_shell.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+    )
+    row = _read_jsonl(out)[0]
+    saeo = row["Supplements"][0]["ActualEducationOrganization"]
+    assert saeo["INN"] == "770000000333"
+    assert saeo["OGRN"] == "1027700333003"
+    assert saeo["KPP"] == "770301001"
+    assert stats.supplement_aeo_degenerate_shell_records == 1
+
+
+def test_report_certificate_inn_manual_override(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    rep = tmp_path / "rep.json"
+    proc = _run_convert_cli(
+        [
+            str(FIXTURES / "cert_manual_inn_by_ogrn.xml"),
+            "-o",
+            str(out),
+            "--report",
+            str(rep),
+            "--schema",
+            str(SCHEMA),
+            "--progress-every",
+            "0",
+        ]
+    )
+    assert proc.returncode == 0
+    data = json.loads(rep.read_text(encoding="utf-8"))
+    block = data["total"]["certificate_INN_manual_override_by_OGRN_map"]
+    assert block["records_touched"] == 1
+    assert block["EduOrgINN"] == 1
+    assert block["root_ActualEducationOrganization_INN"] == 1
 
 
 def test_cli_help() -> None:
@@ -879,6 +1344,8 @@ def test_cli_help() -> None:
     assert "--include-null-keys" in p.stdout
     assert "--omit-invalid-eduorg-ogrn" in p.stdout
     assert "--no-fill-aeo-coherent-inn-ogrn" in p.stdout
+    assert "--certificate-inn-overrides-by-ogrn-json" in p.stdout
+    assert "--no-certificate-inn-overrides-by-ogrn" in p.stdout
 
     p2 = subprocess.run(
         [sys.executable, str(ROOT / "download.py"), "--help"],

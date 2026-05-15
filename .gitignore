@@ -10,3 +10,6 @@ venv/
 # Локально сгенерированные выборки из полного JSONL (десятки/сотни МБ)
 examples/jsonl_samples/
 examples/jsonl_samples_aeo_mismatch/
+
+# Выборка «филиал / пустой INN в supplement» из полного JSONL (~МБ; см. tools/extract_branch_supplement_aeo_inn_gap_jsonl.py)
+examples/branch_supplement_aeo_inn_gap.jsonl

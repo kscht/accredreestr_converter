@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenData>
+  <Certificates>
+    <Certificate>
+      <Id>c68f57a6-e846-f050-fba2-011a5f71ab8c</Id>
+      <IsFederal>0</IsFederal>
+      <StatusName>Действующее</StatusName>
+      <RegionName>Смоленская область</RegionName>
+      <RegNumber>1982</RegNumber>
+      <IssueDate>2014-04-14</IssueDate>
+      <EndDate>2026-04-14</EndDate>
+    </Certificate>
+    <Certificate>
+      <Id>min-after-blocklist</Id>
+      <IsFederal>1</IsFederal>
+      <RegNumber>RN-MIN2</RegNumber>
+      <IssueDate>2020-01-15</IssueDate>
+      <EndDate>2025-01-15</EndDate>
+    </Certificate>
+  </Certificates>
+</OpenData>

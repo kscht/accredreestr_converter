@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenData>
+  <Certificates>
+    <Certificate>
+      <Id>cert-eduorg-backfill-root-only</Id>
+      <IsFederal>0</IsFederal>
+      <StatusName>Действующее</StatusName>
+      <RegionName>Москва</RegionName>
+      <ActualEducationOrganization>
+        <Id>aeo-only-root</Id>
+        <INN>770000000333</INN>
+        <OGRN>1027700333003</OGRN>
+      </ActualEducationOrganization>
+    </Certificate>
+  </Certificates>
+</OpenData>

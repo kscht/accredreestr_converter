@@ -1,0 +1,120 @@
+{
+  "source_jsonl": "out/data-20260403-structure-20160713.jsonl",
+  "description_ru": "Уникальные строковые значения ``StatusName``: на корне ``Certificate`` и в элементах ``Supplements[]``. Пустая строка / null / отсутствие ключа — метка «<null>». Для каждого уникального значения — одно первое вхождение в файле (``example_*``). В реестре не только «Действующее» и «Недействующее»; см. ``histograms``.",
+  "certificate_lines_total": 43725,
+  "histograms": {
+    "certificate_StatusName": {
+      "Действующее": 43114,
+      "Переоформлено": 597,
+      "Выдан дубликат": 6,
+      "Приостановлено": 5,
+      "Переоформлено в части приложения": 2,
+      "<null>": 1
+    },
+    "supplement_StatusName": {
+      "Действующее": 51656,
+      "<null>": 32,
+      "Возобновлено": 3,
+      "Лишение в отношении отдельных уровней образования, укрупненных групп специальностей и направлений подготовки": 3,
+      "Приостановлено": 3
+    }
+  },
+  "unique_sorted": {
+    "certificate_StatusName": [
+      "Действующее",
+      "Переоформлено",
+      "Выдан дубликат",
+      "Приостановлено",
+      "Переоформлено в части приложения",
+      "<null>"
+    ],
+    "supplement_StatusName": [
+      "Действующее",
+      "<null>",
+      "Возобновлено",
+      "Лишение в отношении отдельных уровней образования, укрупненных групп специальностей и направлений подготовки",
+      "Приостановлено"
+    ],
+    "union_sorted": [
+      "Возобновлено",
+      "Выдан дубликат",
+      "Действующее",
+      "Лишение в отношении отдельных уровней образования, укрупненных групп специальностей и направлений подготовки",
+      "Переоформлено",
+      "Переоформлено в части приложения",
+      "Приостановлено",
+      "<null>"
+    ]
+  },
+  "examples_first_occurrence": {
+    "certificate_StatusName": {
+      "Действующее": {
+        "certificate_id": "0000a217-d5f2-5067-113a-ebe576e4eaf0",
+        "RegionName": "Орловская область",
+        "EduOrgShortName": "МБОУ «Новоселовская ООШ» Орловского муниципального округа"
+      },
+      "Переоформлено": {
+        "certificate_id": "0093a82e-8f82-8b14-5b66-e0e73bbcfb36",
+        "RegionName": "Смоленская область",
+        "EduOrgShortName": "МКОУ Вараксинская ОШ"
+      },
+      "Выдан дубликат": {
+        "certificate_id": "6ebcc24d-cadc-979b-c854-141a371d675f",
+        "RegionName": "Ставропольский край",
+        "EduOrgShortName": "МБОУ гимназия №4"
+      },
+      "Приостановлено": {
+        "certificate_id": "0b0f1010-120c-130c-0a0d-0f0c0a0c100c",
+        "RegionName": "Республика Дагестан",
+        "EduOrgShortName": "ЧОУ ВО \"СПИ\""
+      },
+      "Переоформлено в части приложения": {
+        "certificate_id": "cc006008-f64f-4390-87e1-448d27f6ebf0",
+        "RegionName": "Новгородская область",
+        "EduOrgShortName": "МАОУ «Средняя общеобразовательная школа № 15 имени С.П. Шпунякова»"
+      },
+      "<null>": {
+        "certificate_id": "73f6bb4b-f1e9-a2e5-ab83-9bb9a6c97480",
+        "RegionName": "Рязанская область",
+        "EduOrgShortName": "НОУ \"ШИОР\""
+      }
+    },
+    "supplement_StatusName": {
+      "Действующее": {
+        "certificate_id": "0000a217-d5f2-5067-113a-ebe576e4eaf0",
+        "supplement_index": 0,
+        "certificate_StatusName": "Действующее",
+        "Supplement_Number": "1",
+        "SerialNumber": "57А01"
+      },
+      "<null>": {
+        "certificate_id": "0059f461-5dfe-108f-cf3c-e6f3cdf74216",
+        "supplement_index": 0,
+        "certificate_StatusName": "Действующее",
+        "Supplement_Number": "1",
+        "SerialNumber": "22А02"
+      },
+      "Возобновлено": {
+        "certificate_id": "1dcd9fc2-5309-49a2-a1ed-21b47c9e172f",
+        "supplement_index": 0,
+        "certificate_StatusName": "Действующее",
+        "Supplement_Number": "1",
+        "SerialNumber": "35А01"
+      },
+      "Лишение в отношении отдельных уровней образования, укрупненных групп специальностей и направлений подготовки": {
+        "certificate_id": "0b0e110f-0e13-0c13-0a10-0a0c110d0f13",
+        "supplement_index": 0,
+        "certificate_StatusName": "Действующее",
+        "Supplement_Number": "1",
+        "SerialNumber": "90А01"
+      },
+      "Приостановлено": {
+        "certificate_id": "0b0f1010-120c-130c-0a0d-0f0c0a0c100c",
+        "supplement_index": 0,
+        "certificate_StatusName": "Приостановлено",
+        "Supplement_Number": "1",
+        "SerialNumber": "90А01"
+      }
+    }
+  }
+}

@@ -11,7 +11,7 @@
 - **внешние ключи** и каскады;
 - соответствие **колонка SQL** ↔ **`from_json`** (имя ключа в объекте после разбора конвертером).
 
-Импортёр: одна строка JSONL → `INSERT`/`COPY` в `certificates` + дочерние строки по массивам и вложенному объекту. Набор строк JSONL обычно готовят **`convert.py`** (по умолчанию без «Недействующее» на корне, без псевдорегиона «за пределами РФ», без ключей с `null` и пустых `[]`/`{}`; полный снимок как в XML — **`--include-inactive`**, **`--include-outside-rf-region`**, **`--include-null-keys`**).
+Импортёр: одна строка JSONL → `INSERT`/`COPY` в `certificates` + дочерние строки по массивам и вложенному объекту. Набор строк JSONL обычно готовят **`convert.py`** (по умолчанию без корневых статусов «Недействующее» / «Прекращено» / «Лишен аккредитации», без приложений `Supplements` с этими `StatusName`, без псевдорегиона «за пределами РФ», без ключей с `null` и пустых `[]`/`{}`; полный снимок как в XML — **`--include-inactive`**, **`--include-outside-rf-region`**, **`--include-null-keys`**).
 
 Тот же файл служит источником для **Prisma** (`python tools/generate_prisma_schema.py`, см. [`prisma.md`](prisma.md)) и для **DuckDB / Parquet** (`python -m parquet_convert.import_duckdb`, см. [`parquet_duckdb.md`](parquet_duckdb.md)). Mermaid **ER-диаграмма** всех таблиц и колонок (для GitHub): **`docs/diagrams/sql_schema_er.md`** — пересборка **`python tools/generate_sql_er_diagram.py`** после правок `mapping.json`.
 

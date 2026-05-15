@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenData>
+  <Certificates>
+    <Certificate>
+      <Id>cert-strip</Id>
+      <IsFederal>1</IsFederal>
+      <StatusName>Действующее</StatusName>
+      <Supplements>
+        <Supplement>
+          <Number>1</Number>
+          <StatusName>Действующее</StatusName>
+        </Supplement>
+        <Supplement>
+          <Number>2</Number>
+          <StatusName>Недействующее</StatusName>
+        </Supplement>
+        <Supplement>
+          <Number>3</Number>
+          <StatusName>Прекращено</StatusName>
+        </Supplement>
+      </Supplements>
+    </Certificate>
+  </Certificates>
+</OpenData>

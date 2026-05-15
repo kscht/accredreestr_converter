@@ -1,0 +1,16 @@
+{
+  "source_jsonl": "examples/branch_supplement_aeo_inn_gap.jsonl",
+  "description_ru": "Аудит выборки ``branch_supplement_aeo_inn_gap_v1``: supplement ``ActualEducationOrganization`` с **другим** ``Id``, чем у корневой AEO, при пустом **INN** в supplement и непустом доноре INN на корне сертификата (см. ``tools/extract_branch_supplement_aeo_inn_gap_jsonl.py``). Поля ``donor_inn_digits`` / ``donor_ogrn_digits`` в записи — снимок на момент извлечения.",
+  "lines_total": 0,
+  "lines_wrong_or_missing_record_kind": 0,
+  "donor_inn_digits_mismatch_vs_reconstructed": 0,
+  "supplement_aeo_OGRN_missing_with_upper_donor": 0,
+  "supplement_aeo_OGRN_missing_without_upper_donor": 0,
+  "supplement_aeo_HeadEduOrgId_nonempty": 0,
+  "donor_INN_source_hint": {
+    "root_aeo_had_digit_INN": 0,
+    "only_EduOrgINN_had_digits": 0,
+    "description_ru": "Подсказка по сохранённым полям: у скольких записей в slim-корне был цифровой INN vs только EduOrgINN (на момент извлечения)."
+  },
+  "supplement_IsForBranch_histogram": {}
+}

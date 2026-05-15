@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenData>
+  <Certificates>
+    <Certificate>
+      <Id>ok-act</Id>
+      <IsFederal>1</IsFederal>
+      <StatusName>Действующее</StatusName>
+    </Certificate>
+    <Certificate>
+      <Id>omit-pre</Id>
+      <IsFederal>0</IsFederal>
+      <StatusName>Прекращено</StatusName>
+    </Certificate>
+    <Certificate>
+      <Id>omit-lish</Id>
+      <IsFederal>0</IsFederal>
+      <StatusName>Лишен аккредитации</StatusName>
+    </Certificate>
+  </Certificates>
+</OpenData>

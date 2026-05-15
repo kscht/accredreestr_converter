@@ -1,14 +1,36 @@
 """Потоковая конвертация XML реестра аккредитации в JSON Lines (UTF-8).
 
-По умолчанию: без «Недействующее» на корне, без псевдорегиона «за пределами РФ», компактный JSON
-(без ключей с null и пустых коллекций после нормализации). ИНН/КПП/ОГРН — только цифры после
-очистки или ключ не пишется; счётчик ``non_digit_ids`` в отчёте ``--report``.
+По умолчанию: без строк со «срезанными» статусами на корне ``Certificate`` (см. ``CERTIFICATE_ROOT_STATUSES_OMITTED_FROM_JSONL``), без псевдорегиона «за пределами РФ», компактный JSON
+(без ключей с null и пустых коллекций после нормализации). Элементы ``Supplements[]`` с ``StatusName`` из
+``SUPPLEMENT_STATUSES_STRIPPED_FROM_JSONL`` при том же режиме отсечения **удаляются** из массива до записи строки.
+ИНН/КПП/ОГРН — только цифры после очистки или ключ не пишется; счётчик ``non_digit_ids`` в отчёте ``--report``.
 
 Если у ``ActualEducationOrganization`` на корне и в ``Supplements[]`` совпадают UID
 (``Id`` и при двусторонней заполненности ``HeadEduOrgId``), пустые **INN**/**OGRN** в карточке
 приложения дополняются из корневой AEO или из **EduOrgINN** / **EduOrgOGRN** на сертификате;
 затем пустые поля у **корневой** AEO — из приложения с тем же UID или с тех же EduOrg-полей.
-Отключение: ``--no-fill-aeo-coherent-inn-ogrn`` или API ``fill_aeo_coherent_inn_ogrn=False``.
+
+Если у supplement-карточки **другой** ``Id`` (не совпадает с корневой AEO), пустые **INN**/**OGRN**
+в ней всё равно дополняются теми же донорами (**корневая AEO**, иначе **EduOrgINN** / **EduOrgOGRN** на сертификате)
+— типичные филиалы/площадки без слова «филиал» в наименовании.
+
+Если на корне **Certificate** нет валидных **EduOrgINN** / **EduOrgOGRN**, они дополняются **снизу**:
+сначала из **supplement** ``ActualEducationOrganization`` с тем же UID, что корневая AEO, иначе из **корневой** AEO.
+
+После автоматических дозаполнений ИНН: по справочнику ``specs/certificate_inn_overrides_by_ogrn.json``
+(ОГРН→ИНН, только цифры) можно записать отсутствующие **EduOrgINN** и/или **INN** корневой
+``ActualEducationOrganization``, если ОГРН записи есть в таблице (редкие случаи, когда в XML есть ОГРН,
+а ИНН нигде не указан). Если заданы **и** ``EduOrgOGRN``, **и** ``ActualEducationOrganization.OGRN``,
+они должны совпадать, иначе правило не применяется.
+
+Если в ``Supplements[]`` у ``ActualEducationOrganization`` **нет** валидных ИНН и ОГРН как цифр (пустая
+«оболочка», часто только ``RegionName``), после остальных правил (при включённом дозаполнении AEO) поля
+**INN** / **OGRN** / **KPP** копируются с корневой AEO или с **EduOrg*** на сертификате (те же доноры, что для филиалов).
+
+Отключение автодополнения AEO/сертификата: ``--no-fill-aeo-coherent-inn-ogrn`` или API ``fill_aeo_coherent_inn_ogrn=False``.
+Отключение справочника ОГРН→ИНН: ``--no-certificate-inn-overrides-by-ogrn`` или API ``certificate_inn_overrides_by_ogrn=False``.
+
+Отдельные ``Certificate.Id`` из ``CERTIFICATE_IDS_OMITTED_FROM_JSONL_BLOCKLIST`` в JSONL **не попадают** (жёсткий блоклист в коде).
 """
 
 from __future__ import annotations
@@ -67,7 +89,25 @@ COLLECTION_DEFAULTS: Final[dict[str, tuple[str, ...]]] = {
     "Supplement": ("EducationalPrograms",),
 }
 
-# Записи Certificate с таким StatusName при включённом --omit-inactive не попадают в JSONL.
+# Записи Certificate с корневым StatusName из этого множества при omit_inactive не попадают в JSONL.
+CERTIFICATE_ROOT_STATUSES_OMITTED_FROM_JSONL: Final[frozenset[str]] = frozenset(
+    {
+        "Недействующее",
+        "Прекращено",
+        "Лишен аккредитации",
+    }
+)
+
+# Элементы Supplements[] с таким StatusName удаляются из массива (при omit_inactive) до записи строки.
+SUPPLEMENT_STATUSES_STRIPPED_FROM_JSONL: Final[frozenset[str]] = frozenset(
+    {
+        "Недействующее",
+        "Прекращено",
+        "Лишен аккредитации",
+    }
+)
+
+# Обратная совместимость имён: раньше отсекался только «Недействующее» на корне.
 CERTIFICATE_STATUS_OMITTED_FROM_JSONL: Final[str] = "Недействующее"
 
 # Псевдорегион для ОО за пределами РФ; по умолчанию такие сертификаты не пишутся в JSONL (см. omit_outside_rf_region).
@@ -75,8 +115,22 @@ CERTIFICATE_REGION_NAME_OUTSIDE_RF: Final[str] = (
     "образовательные учреждения, находящиеся за пределами Российской Федерации"
 )
 
+# Не писать в JSONL указанные ``Certificate.Id`` (сравнение UUID без учёта регистра).
+# МБОУ «Логовская ОШ» Велижского района (рег. № 1982): запись исключена из выгрузки по запросу.
+CERTIFICATE_IDS_OMITTED_FROM_JSONL_BLOCKLIST: Final[frozenset[str]] = frozenset(
+    {"c68f57a6-e846-f050-fba2-011a5f71ab8c"}
+)
+_CERTIFICATE_IDS_OMITTED_FROM_JSONL_BLOCKLIST_LOWER: Final[frozenset[str]] = frozenset(
+    x.lower() for x in CERTIFICATE_IDS_OMITTED_FROM_JSONL_BLOCKLIST
+)
+
 # Имя эталонного XML структуры (лежит в specs/xml/)
 DEFAULT_SCHEMA_FILENAME: Final[str] = "data-20160908-structure-20160713.xml"
+
+# Ручной справочник ИНН по ОГРН для исключений на уровне Certificate (лежит в specs/)
+DEFAULT_CERTIFICATE_INN_OVERRIDES_BY_OGRN_FILENAME: Final[str] = (
+    "certificate_inn_overrides_by_ogrn.json"
+)
 
 _BOOL_TRUE: Final[frozenset[str]] = frozenset(
     {"1", "true", "да", "y", "yes"}
@@ -109,6 +163,19 @@ def _project_root() -> Path:
 def default_schema_path() -> Path:
     """Путь к эталонному XML со структурой полей."""
     return _project_root() / "specs" / "xml" / DEFAULT_SCHEMA_FILENAME
+
+
+def default_certificate_inn_overrides_by_ogrn_path() -> Path:
+    """Путь к JSON соответствия ОГРН→ИНН для дозаполнения на корне Certificate."""
+    return _project_root() / "specs" / DEFAULT_CERTIFICATE_INN_OVERRIDES_BY_OGRN_FILENAME
+
+
+def _certificate_id_omitted_by_jsonl_blocklist(record: dict[str, Any]) -> bool:
+    """True, если ``Certificate.Id`` входит в ``CERTIFICATE_IDS_OMITTED_FROM_JSONL_BLOCKLIST``."""
+    cid = record.get("Id")
+    if not isinstance(cid, str):
+        return False
+    return cid.strip().lower() in _CERTIFICATE_IDS_OMITTED_FROM_JSONL_BLOCKLIST_LOWER
 
 
 def load_schema_tag_names(schema_path: Path) -> set[str]:
@@ -417,6 +484,15 @@ def _aeo_supplement_uid_matches_root(root_aeo: Any, sup_aeo: Any) -> bool:
     return True
 
 
+def _aeo_supplement_uid_differs_from_root(root_aeo: Any, sup_aeo: Any) -> bool:
+    """Оба ``Id`` заданы и различаются (реестровый «филиал по Id»)."""
+    if not isinstance(root_aeo, dict) or not isinstance(sup_aeo, dict):
+        return False
+    rid = _aeo_uid_token(root_aeo.get("Id"))
+    sid = _aeo_uid_token(sup_aeo.get("Id"))
+    return bool(rid and sid and rid != sid)
+
+
 def _aeo_field_missing_for_fill(aeo: Any, field_name: str) -> bool:
     if not isinstance(aeo, dict) or field_name not in aeo:
         return True
@@ -444,6 +520,14 @@ def _donor_ogrn_for_supplement(root_aeo: Any, row: dict[str, Any]) -> str | None
     return _scalar_digits_only_string(row.get("EduOrgOGRN"))
 
 
+def _donor_kpp_for_supplement(root_aeo: Any, row: dict[str, Any]) -> str | None:
+    if isinstance(root_aeo, dict):
+        d = _scalar_digits_only_string(root_aeo.get("KPP"))
+        if d:
+            return d
+    return _scalar_digits_only_string(row.get("EduOrgKPP"))
+
+
 def _first_supplement_digit_same_uid(
     row: dict[str, Any], root_aeo: Any, field: str
 ) -> str | None:
@@ -464,10 +548,11 @@ def _first_supplement_digit_same_uid(
 def fill_aeo_inn_ogrn_from_coherent_certificate_sources(
     record: dict[str, Any], stats: ConversionStats
 ) -> None:
-    """Дополняет INN/OGRN в корневой и supplement ``ActualEducationOrganization`` при совпадении UID.
+    """Дополняет INN/OGRN в корневой и supplement ``ActualEducationOrganization``.
 
-    Сначала — карточки в ``Supplements[]`` (донор: корневая AEO, иначе EduOrg* на сертификате),
-    затем — корневая AEO (донор: первая подходящая supplement-карточка, иначе EduOrg*).
+    Сначала — supplement при **совпадении** UID с корнем; затем supplement при **разном** ``Id`` у AEO
+    (донор: корневая AEO, иначе EduOrg* на сертификате); затем — корневая AEO (донор: первая
+    подходящая supplement-карточка с тем же UID, иначе EduOrg*).
     """
     root_aeo = record.get("ActualEducationOrganization")
     for sup in record.get("Supplements") or []:
@@ -489,6 +574,26 @@ def fill_aeo_inn_ogrn_from_coherent_certificate_sources(
                 saeo["OGRN"] = d
                 stats.aeo_coherent_fill_supplement_ogrn += 1
 
+    if isinstance(root_aeo, dict):
+        for sup in record.get("Supplements") or []:
+            if not isinstance(sup, dict):
+                continue
+            saeo = sup.get("ActualEducationOrganization")
+            if not isinstance(saeo, dict):
+                continue
+            if not _aeo_supplement_uid_differs_from_root(root_aeo, saeo):
+                continue
+            if _aeo_field_missing_for_fill(saeo, "INN"):
+                d = _donor_inn_for_supplement(root_aeo, record)
+                if d:
+                    saeo["INN"] = d
+                    stats.aeo_branch_id_mismatch_fill_supplement_inn += 1
+            if _aeo_field_missing_for_fill(saeo, "OGRN"):
+                d = _donor_ogrn_for_supplement(root_aeo, record)
+                if d:
+                    saeo["OGRN"] = d
+                    stats.aeo_branch_id_mismatch_fill_supplement_ogrn += 1
+
     if not isinstance(root_aeo, dict):
         return
     if _aeo_field_missing_for_fill(root_aeo, "INN"):
@@ -505,6 +610,182 @@ def fill_aeo_inn_ogrn_from_coherent_certificate_sources(
         if d:
             root_aeo["OGRN"] = d
             stats.aeo_coherent_fill_root_ogrn += 1
+
+
+def fill_certificate_eduorg_inn_ogrn_from_near_aeo(
+    record: dict[str, Any], stats: ConversionStats
+) -> None:
+    """Дополняет **EduOrgINN** / **EduOrgOGRN** на корне Certificate, если там нет валидных цифр.
+
+    Источник: сначала supplement ``ActualEducationOrganization`` с тем же UID, что корневая AEO
+    (как ``_first_supplement_digit_same_uid``), иначе корневая AEO. Не перезаписывает уже валидные
+    значения на сертификате.
+    """
+    root_aeo = record.get("ActualEducationOrganization")
+    if not isinstance(root_aeo, dict):
+        return
+
+    if _scalar_digits_only_string(record.get("EduOrgINN")) is None:
+        d = _first_supplement_digit_same_uid(record, root_aeo, "INN")
+        if d:
+            record["EduOrgINN"] = d
+            stats.cert_eduorg_inn_backfill_from_supplement_same_uid_aeo += 1
+        else:
+            d2 = _scalar_digits_only_string(root_aeo.get("INN"))
+            if d2:
+                record["EduOrgINN"] = d2
+                stats.cert_eduorg_inn_backfill_from_root_aeo += 1
+
+    if _scalar_digits_only_string(record.get("EduOrgOGRN")) is None:
+        d = _first_supplement_digit_same_uid(record, root_aeo, "OGRN")
+        if d:
+            record["EduOrgOGRN"] = d
+            stats.cert_eduorg_ogrn_backfill_from_supplement_same_uid_aeo += 1
+        else:
+            d2 = _scalar_digits_only_string(root_aeo.get("OGRN"))
+            if d2:
+                record["EduOrgOGRN"] = d2
+                stats.cert_eduorg_ogrn_backfill_from_root_aeo += 1
+
+
+def _load_certificate_inn_overrides_by_ogrn(path: Path) -> dict[str, str]:
+    """Загружает словарь ОГРН→ИНН; в JSON игнорируются ключи, начинающиеся с ``_``."""
+    if not path.is_file():
+        logging.debug("Файл справочника ИНН по ОГРН не найден, пропуск: %s", path)
+        return {}
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        logging.warning("Не удалось прочитать справочник ИНН по ОГРН %s: %s", path, exc)
+        return {}
+    if not isinstance(raw, dict):
+        logging.warning("Справочник ИНН по ОГРН должен быть JSON-объектом: %s", path)
+        return {}
+    out: dict[str, str] = {}
+    for k, v in raw.items():
+        if not isinstance(k, str) or k.startswith("_"):
+            continue
+        ok = _scalar_digits_only_string(k)
+        iv = _scalar_digits_only_string(v)
+        if ok and iv:
+            out[ok] = iv
+    return out
+
+
+def _ogrn_for_certificate_inn_override(record: dict[str, Any]) -> str | None:
+    cert_o = _scalar_digits_only_string(record.get("EduOrgOGRN"))
+    root_aeo = record.get("ActualEducationOrganization")
+    root_o = (
+        _scalar_digits_only_string(root_aeo.get("OGRN"))
+        if isinstance(root_aeo, dict)
+        else None
+    )
+    if cert_o and root_o and cert_o != root_o:
+        return None
+    if cert_o:
+        return cert_o
+    if root_o:
+        return root_o
+    return None
+
+
+def apply_certificate_inn_from_manual_ogrn_map(
+    record: dict[str, Any],
+    inn_by_ogrn: dict[str, str],
+    stats: ConversionStats,
+) -> None:
+    """Дополняет **EduOrgINN** и/или INN корневой AEO по ручному соответствию ОГРН→ИНН.
+
+    Не перезаписывает уже заданные цифровые ИНН. Если в записи указаны оба ОГРН
+    (на сертификате и на корневой AEO), они должны совпадать.
+    """
+    if not inn_by_ogrn:
+        return
+    ogrn = _ogrn_for_certificate_inn_override(record)
+    if not ogrn:
+        return
+    inn = inn_by_ogrn.get(ogrn)
+    if not inn:
+        return
+    root_aeo = record.get("ActualEducationOrganization")
+
+    wrote_any = False
+    if _scalar_digits_only_string(record.get("EduOrgINN")) is None:
+        record["EduOrgINN"] = inn
+        stats.cert_inn_manual_override_by_ogrn_eduorg_inn += 1
+        wrote_any = True
+    if isinstance(root_aeo, dict) and _scalar_digits_only_string(root_aeo.get("INN")) is None:
+        root_aeo["INN"] = inn
+        stats.cert_inn_manual_override_by_ogrn_root_aeo_inn += 1
+        wrote_any = True
+    if wrote_any:
+        stats.cert_inn_manual_override_by_ogrn_records += 1
+
+
+def fill_degenerate_supplement_aeo_identity_from_certificate_donors(
+    record: dict[str, Any], stats: ConversionStats
+) -> None:
+    """Дополняет **INN** / **OGRN** / **KPP** в supplement ``ActualEducationOrganization``, если оба
+    идентификатора ИНН и ОГРН в карточке отсутствуют как непустые «только цифры» (пустая оболочка).
+
+    Доноры — как ``_donor_*_for_supplement``: корневая AEO, иначе поля **EduOrg*** на сертификате.
+    Выполняется после ``fill_certificate_eduorg_inn_ogrn_from_near_aeo`` и ручного ОГРН→ИНН, чтобы
+    донор уже мог быть на корне. Не перезаписывает уже валидные цифровые значения.
+    Вызывается только при ``fill_aeo_coherent_inn_ogrn=True`` (как остальное дозаполнение AEO).
+    """
+    root_aeo = record.get("ActualEducationOrganization")
+    for sup in record.get("Supplements") or []:
+        if not isinstance(sup, dict):
+            continue
+        saeo = sup.get("ActualEducationOrganization")
+        if not isinstance(saeo, dict):
+            continue
+        if _scalar_digits_only_string(saeo.get("INN")) is not None:
+            continue
+        if _scalar_digits_only_string(saeo.get("OGRN")) is not None:
+            continue
+        inn_d = _donor_inn_for_supplement(root_aeo, record)
+        ogrn_d = _donor_ogrn_for_supplement(root_aeo, record)
+        kpp_d = _donor_kpp_for_supplement(root_aeo, record)
+        if not inn_d and not ogrn_d and not kpp_d:
+            continue
+        touched = False
+        if inn_d:
+            saeo["INN"] = inn_d
+            stats.supplement_aeo_degenerate_shell_fill_inn += 1
+            touched = True
+        if ogrn_d:
+            saeo["OGRN"] = ogrn_d
+            stats.supplement_aeo_degenerate_shell_fill_ogrn += 1
+            touched = True
+        if kpp_d and _aeo_field_missing_for_fill(saeo, "KPP"):
+            saeo["KPP"] = kpp_d
+            stats.supplement_aeo_degenerate_shell_fill_kpp += 1
+            touched = True
+        if touched:
+            stats.supplement_aeo_degenerate_shell_records += 1
+
+
+def strip_supplements_by_excluded_status(record: dict[str, Any]) -> int:
+    """Удаляет из ``Supplements[]`` элементы, у которых ``StatusName`` в ``SUPPLEMENT_STATUSES_STRIPPED_FROM_JSONL``.
+
+    Мутирует ``record``; возвращает число удалённых элементов.
+    """
+    sups = record.get("Supplements")
+    if not isinstance(sups, list) or not sups:
+        return 0
+    kept: list[Any] = []
+    removed = 0
+    for sup in sups:
+        if isinstance(sup, dict):
+            st = sup.get("StatusName")
+            if isinstance(st, str) and st.strip() in SUPPLEMENT_STATUSES_STRIPPED_FROM_JSONL:
+                removed += 1
+                continue
+        kept.append(sup)
+    if removed:
+        record["Supplements"] = kept
+    return removed
 
 
 def has_valid_eduorg_ogrn(record: dict[str, Any]) -> bool:
@@ -536,8 +817,21 @@ class ConversionStats:
     warned_unknown_tags: set[str] = field(default_factory=set)
     aeo_coherent_fill_supplement_inn: int = 0
     aeo_coherent_fill_supplement_ogrn: int = 0
+    aeo_branch_id_mismatch_fill_supplement_inn: int = 0
+    aeo_branch_id_mismatch_fill_supplement_ogrn: int = 0
     aeo_coherent_fill_root_inn: int = 0
     aeo_coherent_fill_root_ogrn: int = 0
+    cert_eduorg_inn_backfill_from_supplement_same_uid_aeo: int = 0
+    cert_eduorg_inn_backfill_from_root_aeo: int = 0
+    cert_eduorg_ogrn_backfill_from_supplement_same_uid_aeo: int = 0
+    cert_eduorg_ogrn_backfill_from_root_aeo: int = 0
+    cert_inn_manual_override_by_ogrn_records: int = 0
+    cert_inn_manual_override_by_ogrn_eduorg_inn: int = 0
+    cert_inn_manual_override_by_ogrn_root_aeo_inn: int = 0
+    supplement_aeo_degenerate_shell_records: int = 0
+    supplement_aeo_degenerate_shell_fill_inn: int = 0
+    supplement_aeo_degenerate_shell_fill_ogrn: int = 0
+    supplement_aeo_degenerate_shell_fill_kpp: int = 0
 
     def to_report_dict(
         self,
@@ -556,6 +850,12 @@ class ConversionStats:
         total_omitted_invalid_eduorg_ogrn = sum(
             int(v.get("omitted_invalid_eduorg_ogrn", 0)) for v in self.per_file.values()
         )
+        total_stripped_supplements = sum(
+            int(v.get("stripped_supplements_by_status", 0)) for v in self.per_file.values()
+        )
+        total_omitted_personal_blocklist = sum(
+            int(v.get("omitted_certificate_personal_blocklist", 0)) for v in self.per_file.values()
+        )
         return {
             "inputs": list(inputs),
             "per_file": dict(self.per_file),
@@ -565,6 +865,8 @@ class ConversionStats:
                 "omitted_inactive": total_omitted_inactive,
                 "omitted_outside_rf_region": total_omitted_outside_rf,
                 "omitted_invalid_eduorg_ogrn": total_omitted_invalid_eduorg_ogrn,
+                "stripped_supplements_by_status": total_stripped_supplements,
+                "omitted_certificate_personal_blocklist": total_omitted_personal_blocklist,
                 "warnings": {
                     "bad_dates": self.bad_dates,
                     "bad_booleans": self.bad_booleans,
@@ -575,8 +877,37 @@ class ConversionStats:
                 "aeo_coherent_inn_ogrn_fills": {
                     "supplement_ActualEducationOrganization_INN": self.aeo_coherent_fill_supplement_inn,
                     "supplement_ActualEducationOrganization_OGRN": self.aeo_coherent_fill_supplement_ogrn,
+                    "supplement_ActualEducationOrganization_INN_branch_Id_not_root": (
+                        self.aeo_branch_id_mismatch_fill_supplement_inn
+                    ),
+                    "supplement_ActualEducationOrganization_OGRN_branch_Id_not_root": (
+                        self.aeo_branch_id_mismatch_fill_supplement_ogrn
+                    ),
                     "root_ActualEducationOrganization_INN": self.aeo_coherent_fill_root_inn,
                     "root_ActualEducationOrganization_OGRN": self.aeo_coherent_fill_root_ogrn,
+                },
+                "certificate_EduOrg_inn_ogrn_backfill_from_near_aeo": {
+                    "EduOrgINN_from_supplement_same_uid_AEO": (
+                        self.cert_eduorg_inn_backfill_from_supplement_same_uid_aeo
+                    ),
+                    "EduOrgINN_from_root_AEO": self.cert_eduorg_inn_backfill_from_root_aeo,
+                    "EduOrgOGRN_from_supplement_same_uid_AEO": (
+                        self.cert_eduorg_ogrn_backfill_from_supplement_same_uid_aeo
+                    ),
+                    "EduOrgOGRN_from_root_AEO": self.cert_eduorg_ogrn_backfill_from_root_aeo,
+                },
+                "certificate_INN_manual_override_by_OGRN_map": {
+                    "records_touched": self.cert_inn_manual_override_by_ogrn_records,
+                    "EduOrgINN": self.cert_inn_manual_override_by_ogrn_eduorg_inn,
+                    "root_ActualEducationOrganization_INN": (
+                        self.cert_inn_manual_override_by_ogrn_root_aeo_inn
+                    ),
+                },
+                "supplement_ActualEducationOrganization_degenerate_identity_shell_fill": {
+                    "supplement_aeo_cards_touched": self.supplement_aeo_degenerate_shell_records,
+                    "INN": self.supplement_aeo_degenerate_shell_fill_inn,
+                    "OGRN": self.supplement_aeo_degenerate_shell_fill_ogrn,
+                    "KPP": self.supplement_aeo_degenerate_shell_fill_kpp,
                 },
                 "elapsed_seconds": round(elapsed, 3),
             },
@@ -591,6 +922,8 @@ def _init_file_stats(stats: ConversionStats, basename: str) -> None:
             "omitted_inactive": 0,
             "omitted_outside_rf_region": 0,
             "omitted_invalid_eduorg_ogrn": 0,
+            "stripped_supplements_by_status": 0,
+            "omitted_certificate_personal_blocklist": 0,
         }
 
 
@@ -610,6 +943,7 @@ def convert_one(
     source_basename: str | None = None,
     omit_null_keys: bool = True,
     fill_aeo_coherent_inn_ogrn: bool = True,
+    manual_inn_by_ogrn: dict[str, str] | None = None,
 ) -> None:
     """Конвертирует один XML-файл, дописывая строки JSON в открытый файловый объект."""
     _ = schema_path  # зарезервировано для расширений / совместимости API
@@ -617,6 +951,7 @@ def convert_one(
     _init_file_stats(stats, base)
     processed = 0
     skipped = 0
+    inn_map = manual_inn_by_ogrn or {}
 
     with input_path.open("rb") as fh:
         context = etree.iterparse(
@@ -641,10 +976,21 @@ def convert_one(
                     schema_tags,
                     "Certificate",
                 )
+                if omit_inactive:
+                    n_stripped = strip_supplements_by_excluded_status(record)
+                    if n_stripped:
+                        stats.per_file[base]["stripped_supplements_by_status"] = int(
+                            stats.per_file[base].get("stripped_supplements_by_status", 0)
+                        ) + int(n_stripped)
                 if fill_aeo_coherent_inn_ogrn:
                     fill_aeo_inn_ogrn_from_coherent_certificate_sources(record, stats)
+                    fill_certificate_eduorg_inn_ogrn_from_near_aeo(record, stats)
+                if inn_map:
+                    apply_certificate_inn_from_manual_ogrn_map(record, inn_map, stats)
+                if fill_aeo_coherent_inn_ogrn:
+                    fill_degenerate_supplement_aeo_identity_from_certificate_donors(record, stats)
                 if omit_inactive and (
-                    record.get("StatusName") == CERTIFICATE_STATUS_OMITTED_FROM_JSONL
+                    record.get("StatusName") in CERTIFICATE_ROOT_STATUSES_OMITTED_FROM_JSONL
                 ):
                     stats.per_file[base]["omitted_inactive"] += 1
                 elif omit_outside_rf_region and (
@@ -653,6 +999,8 @@ def convert_one(
                     stats.per_file[base]["omitted_outside_rf_region"] += 1
                 elif omit_invalid_eduorg_ogrn and not has_valid_eduorg_ogrn(record):
                     stats.per_file[base]["omitted_invalid_eduorg_ogrn"] += 1
+                elif _certificate_id_omitted_by_jsonl_blocklist(record):
+                    stats.per_file[base]["omitted_certificate_personal_blocklist"] += 1
                 else:
                     safe = ensure_json_safe(record)
                     if omit_null_keys:
@@ -699,6 +1047,8 @@ def convert_many(
     omit_invalid_eduorg_ogrn: bool = False,
     omit_null_keys: bool = True,
     fill_aeo_coherent_inn_ogrn: bool = True,
+    certificate_inn_overrides_by_ogrn: bool = True,
+    certificate_inn_overrides_by_ogrn_json: Path | None = None,
 ) -> ConversionStats:
     """Конвертирует один или несколько входных XML.
 
@@ -709,8 +1059,10 @@ def convert_many(
             ``stem.jsonl`` в ``out_dir`` на вход (нужно не меньше двух файлов).
         out_dir: Каталог для раздельных выходов при ``merged=False``.
         omit_inactive: Если True, не записывать в JSONL сертификаты, у которых на корне
-            ``StatusName`` равен константе ``CERTIFICATE_STATUS_OMITTED_FROM_JSONL``
-            («Недействующее»). По умолчанию **True**; полный снимок как в XML —
+            ``StatusName`` входит в ``CERTIFICATE_ROOT_STATUSES_OMITTED_FROM_JSONL``
+            (в т.ч. «Недействующее», «Прекращено», «Лишен аккредитации»); из ``Supplements[]`` при этом
+            удаляются элементы с ``StatusName`` из ``SUPPLEMENT_STATUSES_STRIPPED_FROM_JSONL``.
+            По умолчанию **True**; полный снимок как в XML (все статусы на корне и все приложения) —
             передайте ``omit_inactive=False`` или в CLI флаг ``--include-inactive``.
         omit_outside_rf_region: Если True, не записывать сертификаты, у которых на корне
             ``RegionName`` совпадает с ``CERTIFICATE_REGION_NAME_OUTSIDE_RF``.
@@ -728,11 +1080,29 @@ def convert_many(
             с корневой AEO, с supplement-карточек с тем же UID и с **EduOrgINN** / **EduOrgOGRN**.
             По умолчанию **True**; отключить — ``fill_aeo_coherent_inn_ogrn=False`` или CLI
             ``--no-fill-aeo-coherent-inn-ogrn``.
+        certificate_inn_overrides_by_ogrn: Если True, после автоматических дозаполнений ИНН
+            применять JSON ``specs/certificate_inn_overrides_by_ogrn.json`` (или путь из
+            ``certificate_inn_overrides_by_ogrn_json``): ОГРН→ИНН для пустых **EduOrgINN** / INN корневой AEO.
+        certificate_inn_overrides_by_ogrn_json: Явный путь к JSON; при ``None`` используется файл в ``specs/``.
     """
     if not inputs:
         raise ValueError("Нет входных файлов")
     schema_tags = load_schema_tag_names(schema_path)
     stats = ConversionStats()
+
+    manual_inn_by_ogrn: dict[str, str] = {}
+    if certificate_inn_overrides_by_ogrn:
+        ogrn_json_path = (
+            certificate_inn_overrides_by_ogrn_json
+            or default_certificate_inn_overrides_by_ogrn_path()
+        ).resolve()
+        manual_inn_by_ogrn = _load_certificate_inn_overrides_by_ogrn(ogrn_json_path)
+        if manual_inn_by_ogrn:
+            logging.info(
+                "Справочник ИНН по ОГРН: %s записей (%s)",
+                len(manual_inn_by_ogrn),
+                ogrn_json_path,
+            )
 
     if not merged:
         if len(inputs) < 2:
@@ -756,6 +1126,7 @@ def convert_many(
                     omit_invalid_eduorg_ogrn=omit_invalid_eduorg_ogrn,
                     omit_null_keys=omit_null_keys,
                     fill_aeo_coherent_inn_ogrn=fill_aeo_coherent_inn_ogrn,
+                    manual_inn_by_ogrn=manual_inn_by_ogrn,
                 )
     else:
         if output is None:
@@ -777,6 +1148,7 @@ def convert_many(
                     omit_invalid_eduorg_ogrn=omit_invalid_eduorg_ogrn,
                     omit_null_keys=omit_null_keys,
                     fill_aeo_coherent_inn_ogrn=fill_aeo_coherent_inn_ogrn,
+                    manual_inn_by_ogrn=manual_inn_by_ogrn,
                 )
 
     return stats
@@ -849,7 +1221,9 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         "--omit-inactive",
         action="store_true",
         help=(
-            "Не записывать в JSONL сертификаты со StatusName «Недействующее» на корне Certificate "
+            "Не записывать в JSONL сертификаты с корневым StatusName из набора "
+            "«Недействующее», «Прекращено», «Лишен аккредитации» и удалять из Supplements[] "
+            "приложения с StatusName из «Недействующее», «Прекращено», «Лишен аккредитации» "
             "(это поведение по умолчанию; флаг можно не указывать)"
         ),
     )
@@ -875,8 +1249,8 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         "--include-inactive",
         action="store_true",
         help=(
-            "Включать в JSONL и недействующие свидетельства (StatusName «Недействующее» на корне) — "
-            "полный снимок по статусу, как в XML"
+            "Полный снимок по статусу как в XML: на корне Certificate — любой StatusName; "
+            "в Supplements[] — все элементы без удаления по StatusName приложения"
         ),
     )
     p.add_argument(
@@ -915,8 +1289,26 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         action="store_true",
         help=(
             "Не дополнять INN/OGRN в ActualEducationOrganization при совпадении UID "
+            "и ветке «филиал по Id»; не поднимать EduOrgINN/EduOrgOGRN на Certificate "
+            "из supplement/корневой AEO "
             "(по умолчанию дополнение из корневой AEO, EduOrgINN/EduOrgOGRN и supplement-карточек включено)"
         ),
+    )
+    p.add_argument(
+        "--certificate-inn-overrides-by-ogrn-json",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help=(
+            "JSON-объект «ОГРН (строка из цифр) → ИНН» для дозаполнения пустых EduOrgINN и INN "
+            "корневой ActualEducationOrganization после автоматических правил; по умолчанию — "
+            "specs/certificate_inn_overrides_by_ogrn.json в каталоге проекта (если файл существует)"
+        ),
+    )
+    p.add_argument(
+        "--no-certificate-inn-overrides-by-ogrn",
+        action="store_true",
+        help="Не применять ручной справочник ИНН по ОГРН (см. --certificate-inn-overrides-by-ogrn-json)",
     )
     return p.parse_args(argv)
 
@@ -979,6 +1371,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     omit_outside_rf_region = not bool(args.include_outside_rf_region)
     omit_null_keys = not bool(args.include_null_keys)
 
+    cert_inn_ov_json = args.certificate_inn_overrides_by_ogrn_json
+    if cert_inn_ov_json is not None:
+        cert_inn_ov_json = cert_inn_ov_json.resolve()
+
     t0 = time.perf_counter()
     try:
         stats = convert_many(
@@ -995,6 +1391,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             omit_invalid_eduorg_ogrn=bool(args.omit_invalid_eduorg_ogrn),
             omit_null_keys=omit_null_keys,
             fill_aeo_coherent_inn_ogrn=not bool(args.no_fill_aeo_coherent_inn_ogrn),
+            certificate_inn_overrides_by_ogrn=not bool(args.no_certificate_inn_overrides_by_ogrn),
+            certificate_inn_overrides_by_ogrn_json=cert_inn_ov_json,
         )
     except ValueError as ve:
         logging.error("%s", ve)

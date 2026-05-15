@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenData>
+  <Certificates>
+    <Certificate>
+      <Id>aefill-branch-diff-uid</Id>
+      <IsFederal>0</IsFederal>
+      <StatusName>Действующее</StatusName>
+      <RegionName>Москва</RegionName>
+      <EduOrgINN>770000000099</EduOrgINN>
+      <EduOrgOGRN>1027700990999</EduOrgOGRN>
+      <ActualEducationOrganization>
+        <Id>root-aeo-uid-xx</Id>
+        <INN>770000000088</INN>
+        <OGRN>1027700880888</OGRN>
+      </ActualEducationOrganization>
+      <Supplements>
+        <Supplement>
+          <Id>sup-branch</Id>
+          <ActualEducationOrganization>
+            <Id>branch-aeo-uid-yy</Id>
+            <FullName>Начальная школа при гимназии</FullName>
+          </ActualEducationOrganization>
+        </Supplement>
+      </Supplements>
+    </Certificate>
+  </Certificates>
+</OpenData>

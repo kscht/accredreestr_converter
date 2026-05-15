@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenData>
+  <Certificates>
+    <Certificate>
+      <Id>cert-supplement-degenerate-shell</Id>
+      <IsFederal>0</IsFederal>
+      <StatusName>Действующее</StatusName>
+      <RegionName>Москва</RegionName>
+      <EduOrgINN>770000000333</EduOrgINN>
+      <EduOrgOGRN>1027700333003</EduOrgOGRN>
+      <EduOrgKPP>770301001</EduOrgKPP>
+      <ActualEducationOrganization>
+        <Id>root-aeo-1</Id>
+        <INN>770000000333</INN>
+        <OGRN>1027700333003</OGRN>
+        <KPP>770301001</KPP>
+      </ActualEducationOrganization>
+      <Supplements>
+        <Supplement>
+          <StatusName>Действующее</StatusName>
+          <ActualEducationOrganization>
+            <RegionName>Москва</RegionName>
+          </ActualEducationOrganization>
+        </Supplement>
+      </Supplements>
+    </Certificate>
+  </Certificates>
+</OpenData>

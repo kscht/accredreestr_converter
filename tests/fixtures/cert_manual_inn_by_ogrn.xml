@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenData>
+  <Certificates>
+    <Certificate>
+      <Id>cert-manual-inn-by-ogrn-1</Id>
+      <IsFederal>0</IsFederal>
+      <StatusName>Действующее</StatusName>
+      <RegionName>Смоленская область</RegionName>
+      <EduOrgOGRN>1026700630615</EduOrgOGRN>
+      <ActualEducationOrganization>
+        <Id>aeo-manual-ogrn-only</Id>
+        <OGRN>1026700630615</OGRN>
+      </ActualEducationOrganization>
+    </Certificate>
+  </Certificates>
+</OpenData>

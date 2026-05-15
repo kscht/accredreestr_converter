@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenData>
+  <Certificates>
+    <Certificate>
+      <Id>cert-eduorg-backfill-sup-same-uid</Id>
+      <IsFederal>0</IsFederal>
+      <StatusName>Действующее</StatusName>
+      <RegionName>Москва</RegionName>
+      <ActualEducationOrganization>
+        <Id>shared-aeo-uid-cert-eduorg</Id>
+        <OGRN>1027700000999</OGRN>
+      </ActualEducationOrganization>
+      <Supplements>
+        <Supplement>
+          <Id>sup-eduorg-backfill</Id>
+          <ActualEducationOrganization>
+            <Id>shared-aeo-uid-cert-eduorg</Id>
+            <INN>770000000055</INN>
+            <OGRN>1027700000999</OGRN>
+          </ActualEducationOrganization>
+        </Supplement>
+      </Supplements>
+    </Certificate>
+  </Certificates>
+</OpenData>
