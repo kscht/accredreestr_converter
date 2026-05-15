@@ -1,0 +1,315 @@
+{
+  "source_jsonl": "out/data-20260403-structure-20160713.jsonl",
+  "description_ru": "Сертификаты с пустым корневым StatusName (нет ключа / null / пустая строка); отдельно — вхождения пустого StatusName в элементах Supplements[]. Полные строки: -p/--problem-jsonl (корень или supplement), -f/--full-jsonl (только корень).",
+  "certificate_lines_total": 43725,
+  "root_StatusName_nullish_lines": 1,
+  "root_StatusName_nullish_by_kind": {
+    "empty_string": 0,
+    "json_null": 0,
+    "missing": 1
+  },
+  "supplement_StatusName_nullish_hits": 32,
+  "certificate_lines_with_any_supplement_StatusName_nullish": 26,
+  "certificate_lines_with_StatusName_nullish_root_or_supplement_union": 27,
+  "problem_jsonl_output": "/home/kscht/cursor/obr/accredreestr_converter/examples/certificate_lines_StatusName_nullish.jsonl",
+  "examples_root_StatusName_nullish": [
+    {
+      "certificate_id": "73f6bb4b-f1e9-a2e5-ab83-9bb9a6c97480",
+      "input_line_number": 21373,
+      "StatusName_kind": "missing",
+      "TypeName": null,
+      "RegionName": "Рязанская область",
+      "EduOrgShortName": "НОУ \"ШИОР\""
+    }
+  ],
+  "examples_supplement_StatusName_nullish": [
+    {
+      "certificate_id": "0059f461-5dfe-108f-cf3c-e6f3cdf74216",
+      "input_line_number": 68,
+      "supplement_index": 0,
+      "StatusName_kind": "missing",
+      "Supplement_Number": "1",
+      "SerialNumber": "22А02",
+      "certificate_StatusName": "Действующее"
+    },
+    {
+      "certificate_id": "0059f461-5dfe-108f-cf3c-e6f3cdf74216",
+      "input_line_number": 68,
+      "supplement_index": 2,
+      "StatusName_kind": "missing",
+      "Supplement_Number": "2",
+      "SerialNumber": "22А02",
+      "certificate_StatusName": "Действующее"
+    },
+    {
+      "certificate_id": "158bdf98-bc13-a9bb-d9b7-95ab07735f49",
+      "input_line_number": 6272,
+      "supplement_index": 1,
+      "StatusName_kind": "missing",
+      "Supplement_Number": "1",
+      "SerialNumber": "22А02",
+      "certificate_StatusName": "Действующее"
+    },
+    {
+      "certificate_id": "15f6ba03-5c1a-55d2-da8c-b244a7be75a5",
+      "input_line_number": 6340,
+      "supplement_index": 2,
+      "StatusName_kind": "missing",
+      "Supplement_Number": "1",
+      "SerialNumber": "22А02",
+      "certificate_StatusName": "Действующее"
+    },
+    {
+      "certificate_id": "16d3e4f2-6dc4-e929-bdda-871df08453d3",
+      "input_line_number": 6491,
+      "supplement_index": 0,
+      "StatusName_kind": "missing",
+      "Supplement_Number": null,
+      "SerialNumber": null,
+      "certificate_StatusName": "Переоформлено"
+    },
+    {
+      "certificate_id": "16d3e4f2-6dc4-e929-bdda-871df08453d3",
+      "input_line_number": 6491,
+      "supplement_index": 1,
+      "StatusName_kind": "missing",
+      "Supplement_Number": null,
+      "SerialNumber": null,
+      "certificate_StatusName": "Переоформлено"
+    },
+    {
+      "certificate_id": "1c74f149-b559-4bc8-9c9e-4c04a5094583",
+      "input_line_number": 7406,
+      "supplement_index": 0,
+      "StatusName_kind": "missing",
+      "Supplement_Number": null,
+      "SerialNumber": null,
+      "certificate_StatusName": "Действующее"
+    },
+    {
+      "certificate_id": "1d3373fd-a6b1-bf0e-61e5-f1b80e126976",
+      "input_line_number": 7523,
+      "supplement_index": 1,
+      "StatusName_kind": "missing",
+      "Supplement_Number": "1",
+      "SerialNumber": "89А02",
+      "certificate_StatusName": "Действующее"
+    },
+    {
+      "certificate_id": "1f48be7a-bf13-4536-bfcf-210da31411f0",
+      "input_line_number": 7839,
+      "supplement_index": 2,
+      "StatusName_kind": "missing",
+      "Supplement_Number": "7",
+      "SerialNumber": "33А01",
+      "certificate_StatusName": "Действующее"
+    },
+    {
+      "certificate_id": "2e70060b-12ea-950b-c979-13352f1744dd",
+      "input_line_number": 10203,
+      "supplement_index": 0,
+      "StatusName_kind": "missing",
+      "Supplement_Number": "1",
+      "SerialNumber": "22А02",
+      "certificate_StatusName": "Действующее"
+    },
+    {
+      "certificate_id": "3c00f35b-1820-5eb0-47e8-e6f83b041bbe",
+      "input_line_number": 12388,
+      "supplement_index": 0,
+      "StatusName_kind": "missing",
+      "Supplement_Number": "1",
+      "SerialNumber": "22А02",
+      "certificate_StatusName": "Действующее"
+    },
+    {
+      "certificate_id": "41bdcc5f-7798-1f84-e089-775958e99a6d",
+      "input_line_number": 13269,
+      "supplement_index": 2,
+      "StatusName_kind": "missing",
+      "Supplement_Number": "1",
+      "SerialNumber": "22А02",
+      "certificate_StatusName": "Действующее"
+    },
+    {
+      "certificate_id": "683467a4-da42-475a-8686-7a0c66d7fc05",
+      "input_line_number": 19466,
+      "supplement_index": 0,
+      "StatusName_kind": "missing",
+      "Supplement_Number": null,
+      "SerialNumber": null,
+      "certificate_StatusName": "Действующее"
+    },
+    {
+      "certificate_id": "6853d1b3-1beb-5251-8144-c30714bfd187",
+      "input_line_number": 19484,
+      "supplement_index": 2,
+      "StatusName_kind": "missing",
+      "Supplement_Number": "1",
+      "SerialNumber": "22А02",
+      "certificate_StatusName": "Действующее"
+    },
+    {
+      "certificate_id": "76af1b7c-f58c-cf77-7993-9186c14086cc",
+      "input_line_number": 21789,
+      "supplement_index": 0,
+      "StatusName_kind": "missing",
+      "Supplement_Number": null,
+      "SerialNumber": null,
+      "certificate_StatusName": "Переоформлено"
+    },
+    {
+      "certificate_id": "7f92c0c9-81b2-ba91-f0da-6c694df03e98",
+      "input_line_number": 23231,
+      "supplement_index": 0,
+      "StatusName_kind": "missing",
+      "Supplement_Number": "1",
+      "SerialNumber": "69А01",
+      "certificate_StatusName": "Переоформлено"
+    },
+    {
+      "certificate_id": "86ea0504-0e2b-ad22-c8f3-f2eba331b9c2",
+      "input_line_number": 24373,
+      "supplement_index": 0,
+      "StatusName_kind": "missing",
+      "Supplement_Number": "1",
+      "SerialNumber": "22А02",
+      "certificate_StatusName": "Действующее"
+    },
+    {
+      "certificate_id": "8c929b03-8e62-344d-bf9b-5194940908a6",
+      "input_line_number": 25274,
+      "supplement_index": 0,
+      "StatusName_kind": "missing",
+      "Supplement_Number": "1",
+      "SerialNumber": "22А02",
+      "certificate_StatusName": "Действующее"
+    },
+    {
+      "certificate_id": "8d4b9c8b-efa0-1482-559c-764c4ed9333a",
+      "input_line_number": 25378,
+      "supplement_index": 1,
+      "StatusName_kind": "missing",
+      "Supplement_Number": "1",
+      "SerialNumber": "22А02",
+      "certificate_StatusName": "Действующее"
+    },
+    {
+      "certificate_id": "989e74a4-7902-3e24-932d-0b44dd70d273",
+      "input_line_number": 27171,
+      "supplement_index": 0,
+      "StatusName_kind": "missing",
+      "Supplement_Number": "1",
+      "SerialNumber": "50А01",
+      "certificate_StatusName": "Действующее"
+    },
+    {
+      "certificate_id": "a44d02e2-eecd-4448-890a-5c36c654dd1e",
+      "input_line_number": 28992,
+      "supplement_index": 0,
+      "StatusName_kind": "missing",
+      "Supplement_Number": "1",
+      "SerialNumber": "79А02",
+      "certificate_StatusName": "Действующее"
+    },
+    {
+      "certificate_id": "a44d02e2-eecd-4448-890a-5c36c654dd1e",
+      "input_line_number": 28992,
+      "supplement_index": 1,
+      "StatusName_kind": "missing",
+      "Supplement_Number": "2",
+      "SerialNumber": "79А02",
+      "certificate_StatusName": "Действующее"
+    },
+    {
+      "certificate_id": "a7b9db08-1239-4a36-8b75-2e78cb9ac939",
+      "input_line_number": 29525,
+      "supplement_index": 0,
+      "StatusName_kind": "missing",
+      "Supplement_Number": "1",
+      "SerialNumber": "77А01",
+      "certificate_StatusName": "Действующее"
+    },
+    {
+      "certificate_id": "aabf5927-2281-480e-be71-85c60f194162",
+      "input_line_number": 30015,
+      "supplement_index": 2,
+      "StatusName_kind": "missing",
+      "Supplement_Number": "2",
+      "SerialNumber": "22А02",
+      "certificate_StatusName": "Действующее"
+    },
+    {
+      "certificate_id": "aabf5927-2281-480e-be71-85c60f194162",
+      "input_line_number": 30015,
+      "supplement_index": 3,
+      "StatusName_kind": "missing",
+      "Supplement_Number": "1",
+      "SerialNumber": "22А02",
+      "certificate_StatusName": "Действующее"
+    },
+    {
+      "certificate_id": "aabf5927-2281-480e-be71-85c60f194162",
+      "input_line_number": 30015,
+      "supplement_index": 5,
+      "StatusName_kind": "missing",
+      "Supplement_Number": "3",
+      "SerialNumber": "22А02",
+      "certificate_StatusName": "Действующее"
+    },
+    {
+      "certificate_id": "acab4e3b-6967-34f2-ad55-74dd3af94815",
+      "input_line_number": 30322,
+      "supplement_index": 0,
+      "StatusName_kind": "missing",
+      "Supplement_Number": "1",
+      "SerialNumber": "22А02",
+      "certificate_StatusName": "Действующее"
+    },
+    {
+      "certificate_id": "b5a660c3-a52c-df0a-f66e-6081eb7f8259",
+      "input_line_number": 31749,
+      "supplement_index": 2,
+      "StatusName_kind": "missing",
+      "Supplement_Number": "1",
+      "SerialNumber": "22А02",
+      "certificate_StatusName": "Действующее"
+    },
+    {
+      "certificate_id": "de8d60aa-67a0-420a-fe3f-a7fb69626beb",
+      "input_line_number": 38403,
+      "supplement_index": 0,
+      "StatusName_kind": "missing",
+      "Supplement_Number": "2",
+      "SerialNumber": "22А02",
+      "certificate_StatusName": "Действующее"
+    },
+    {
+      "certificate_id": "de8d60aa-67a0-420a-fe3f-a7fb69626beb",
+      "input_line_number": 38403,
+      "supplement_index": 2,
+      "StatusName_kind": "missing",
+      "Supplement_Number": "1",
+      "SerialNumber": "22А02",
+      "certificate_StatusName": "Действующее"
+    },
+    {
+      "certificate_id": "df80fb22-7634-8d73-57e8-8d8d43def78c",
+      "input_line_number": 38560,
+      "supplement_index": 1,
+      "StatusName_kind": "missing",
+      "Supplement_Number": "1",
+      "SerialNumber": "22А02",
+      "certificate_StatusName": "Действующее"
+    },
+    {
+      "certificate_id": "e40b8d26-4231-8c7b-d54c-1a58ba412fef",
+      "input_line_number": 39304,
+      "supplement_index": 1,
+      "StatusName_kind": "missing",
+      "Supplement_Number": "2",
+      "SerialNumber": "50А01",
+      "certificate_StatusName": "Действующее"
+    }
+  ]
+}

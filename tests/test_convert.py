@@ -937,6 +937,66 @@ def test_cli_no_fill_aeo_coherent_flag(tmp_path: Path) -> None:
     assert "INN" not in _read_jsonl(out_off)[0]["Supplements"][0]["ActualEducationOrganization"]
 
 
+def test_fill_edulevel_from_programm_name_fixture(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    stats = c.convert_many(
+        [FIXTURES / "edulevel_fill_from_programm_name.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+    )
+    row = _read_jsonl(out)[0]
+    progs = row["Supplements"][0]["EducationalPrograms"]
+    assert progs[0]["EduLevelName"] == "Среднее общее образование"
+    assert "EduLevelName" not in progs[1]
+    assert stats.edulevel_from_programm_name_supplement_programs == 1
+
+
+def test_fill_edulevel_from_programm_name_can_disable(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    c.convert_many(
+        [FIXTURES / "edulevel_fill_from_programm_name.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+        fill_edulevel_from_programm_name=False,
+    )
+    row = _read_jsonl(out)[0]
+    progs = row["Supplements"][0]["EducationalPrograms"]
+    assert "EduLevelName" not in progs[0]
+
+
+def test_report_contains_edulevel_from_programm_count(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    rep = tmp_path / "rep.json"
+    proc = _run_convert_cli(
+        [
+            str(FIXTURES / "edulevel_fill_from_programm_name.xml"),
+            "-o",
+            str(out),
+            "--report",
+            str(rep),
+            "--schema",
+            str(SCHEMA),
+            "--progress-every",
+            "0",
+        ]
+    )
+    assert proc.returncode == 0
+    data = json.loads(rep.read_text(encoding="utf-8"))
+    assert (
+        data["total"]["educational_program_EduLevelName_from_ProgrammName_when_empty"] == 1
+    )
+
+
 def test_report_contains_aeo_coherent_fill_counts(tmp_path: Path) -> None:
     out = tmp_path / "o.jsonl"
     rep = tmp_path / "rep.json"

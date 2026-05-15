@@ -30,6 +30,11 @@
 Отключение автодополнения AEO/сертификата: ``--no-fill-aeo-coherent-inn-ogrn`` или API ``fill_aeo_coherent_inn_ogrn=False``.
 Отключение справочника ОГРН→ИНН: ``--no-certificate-inn-overrides-by-ogrn`` или API ``certificate_inn_overrides_by_ogrn=False``.
 
+Если у элемента ``EducationalPrograms[]`` нет непустого ``EduLevelName``, а ``ProgrammName`` после нормализации
+совпадает с одной из школьных ступеней из ``PROGRAMM_NAMES_THAT_IMPLY_EQUAL_EDU_LEVEL_NAME`` (как в выгрузке ИС ГА:
+напр. «Среднее общее образование» при ``ProgrammCode`` «--»), в JSONL подставляется ``EduLevelName`` с тем же текстом.
+Отключение: ``--no-fill-edulevel-from-programm-name`` или API ``fill_edulevel_from_programm_name=False``.
+
 Отдельные ``Certificate.Id`` из ``CERTIFICATE_IDS_OMITTED_FROM_JSONL_BLOCKLIST`` в JSONL **не попадают** (жёсткий блоклист в коде).
 """
 
@@ -113,6 +118,20 @@ CERTIFICATE_STATUS_OMITTED_FROM_JSONL: Final[str] = "Недействующее"
 # Псевдорегион для ОО за пределами РФ; по умолчанию такие сертификаты не пишутся в JSONL (см. omit_outside_rf_region).
 CERTIFICATE_REGION_NAME_OUTSIDE_RF: Final[str] = (
     "образовательные учреждения, находящиеся за пределами Российской Федерации"
+)
+
+# Совпадение ProgrammName с этой строкой при пустом EduLevelName → подставить EduLevelName (см. fill_* ниже).
+# Те же канонические подписи, что в ``tools/audit_dataset_edu_program_levels.SCHOOL_LEVEL_NAMES``.
+PROGRAMM_NAMES_THAT_IMPLY_EQUAL_EDU_LEVEL_NAME: Final[frozenset[str]] = frozenset(
+    {
+        "Начальное общее образование",
+        "Основное общее образование",
+        "Среднее общее образование",
+        "Дошкольное образование",
+        "Общее образование",
+        "Среднее (полное) общее образование",
+        "Не определен",
+    }
 )
 
 # Не писать в JSONL указанные ``Certificate.Id`` (сравнение UUID без учёта регистра).
@@ -766,6 +785,42 @@ def fill_degenerate_supplement_aeo_identity_from_certificate_donors(
             stats.supplement_aeo_degenerate_shell_records += 1
 
 
+def _educational_program_edulevel_missing(pr: dict[str, Any]) -> bool:
+    """True, если у программы нет непустого EduLevelName (после нормализации парсера)."""
+    if "EduLevelName" not in pr:
+        return True
+    v = pr["EduLevelName"]
+    if v is None:
+        return True
+    if isinstance(v, str):
+        return not v.strip()
+    return not str(v).strip()
+
+
+def fill_edulevel_name_from_programm_name_when_implied(
+    record: dict[str, Any], stats: ConversionStats
+) -> None:
+    """Дополняет пустой ``EduLevelName``, если ``ProgrammName`` — известная школьная ступень реестра.
+
+    Не перезаписывает уже непустой уровень. Мутирует ``record`` (элементы ``EducationalPrograms[]``).
+    """
+    for sup in record.get("Supplements") or []:
+        if not isinstance(sup, dict):
+            continue
+        for pr in sup.get("EducationalPrograms") or []:
+            if not isinstance(pr, dict):
+                continue
+            if not _educational_program_edulevel_missing(pr):
+                continue
+            pn = pr.get("ProgrammName")
+            if not isinstance(pn, str):
+                continue
+            t = pn.strip()
+            if t in PROGRAMM_NAMES_THAT_IMPLY_EQUAL_EDU_LEVEL_NAME:
+                pr["EduLevelName"] = t
+                stats.edulevel_from_programm_name_supplement_programs += 1
+
+
 def strip_supplements_by_excluded_status(record: dict[str, Any]) -> int:
     """Удаляет из ``Supplements[]`` элементы, у которых ``StatusName`` в ``SUPPLEMENT_STATUSES_STRIPPED_FROM_JSONL``.
 
@@ -832,6 +887,7 @@ class ConversionStats:
     supplement_aeo_degenerate_shell_fill_inn: int = 0
     supplement_aeo_degenerate_shell_fill_ogrn: int = 0
     supplement_aeo_degenerate_shell_fill_kpp: int = 0
+    edulevel_from_programm_name_supplement_programs: int = 0
 
     def to_report_dict(
         self,
@@ -909,6 +965,9 @@ class ConversionStats:
                     "OGRN": self.supplement_aeo_degenerate_shell_fill_ogrn,
                     "KPP": self.supplement_aeo_degenerate_shell_fill_kpp,
                 },
+                "educational_program_EduLevelName_from_ProgrammName_when_empty": (
+                    self.edulevel_from_programm_name_supplement_programs
+                ),
                 "elapsed_seconds": round(elapsed, 3),
             },
         }
@@ -943,6 +1002,7 @@ def convert_one(
     source_basename: str | None = None,
     omit_null_keys: bool = True,
     fill_aeo_coherent_inn_ogrn: bool = True,
+    fill_edulevel_from_programm_name: bool = True,
     manual_inn_by_ogrn: dict[str, str] | None = None,
 ) -> None:
     """Конвертирует один XML-файл, дописывая строки JSON в открытый файловый объект."""
@@ -989,6 +1049,8 @@ def convert_one(
                     apply_certificate_inn_from_manual_ogrn_map(record, inn_map, stats)
                 if fill_aeo_coherent_inn_ogrn:
                     fill_degenerate_supplement_aeo_identity_from_certificate_donors(record, stats)
+                if fill_edulevel_from_programm_name:
+                    fill_edulevel_name_from_programm_name_when_implied(record, stats)
                 if omit_inactive and (
                     record.get("StatusName") in CERTIFICATE_ROOT_STATUSES_OMITTED_FROM_JSONL
                 ):
@@ -1047,6 +1109,7 @@ def convert_many(
     omit_invalid_eduorg_ogrn: bool = False,
     omit_null_keys: bool = True,
     fill_aeo_coherent_inn_ogrn: bool = True,
+    fill_edulevel_from_programm_name: bool = True,
     certificate_inn_overrides_by_ogrn: bool = True,
     certificate_inn_overrides_by_ogrn_json: Path | None = None,
 ) -> ConversionStats:
@@ -1080,6 +1143,11 @@ def convert_many(
             с корневой AEO, с supplement-карточек с тем же UID и с **EduOrgINN** / **EduOrgOGRN**.
             По умолчанию **True**; отключить — ``fill_aeo_coherent_inn_ogrn=False`` или CLI
             ``--no-fill-aeo-coherent-inn-ogrn``.
+        fill_edulevel_from_programm_name: Если True, при пустом **EduLevelName** у программы
+            подставлять его из **ProgrammName**, когда последний совпадает с одной из школьных
+            ступеней ``PROGRAMM_NAMES_THAT_IMPLY_EQUAL_EDU_LEVEL_NAME``. По умолчанию **True**;
+            отключить — ``fill_edulevel_from_programm_name=False`` или CLI
+            ``--no-fill-edulevel-from-programm-name``.
         certificate_inn_overrides_by_ogrn: Если True, после автоматических дозаполнений ИНН
             применять JSON ``specs/certificate_inn_overrides_by_ogrn.json`` (или путь из
             ``certificate_inn_overrides_by_ogrn_json``): ОГРН→ИНН для пустых **EduOrgINN** / INN корневой AEO.
@@ -1126,6 +1194,7 @@ def convert_many(
                     omit_invalid_eduorg_ogrn=omit_invalid_eduorg_ogrn,
                     omit_null_keys=omit_null_keys,
                     fill_aeo_coherent_inn_ogrn=fill_aeo_coherent_inn_ogrn,
+                    fill_edulevel_from_programm_name=fill_edulevel_from_programm_name,
                     manual_inn_by_ogrn=manual_inn_by_ogrn,
                 )
     else:
@@ -1148,6 +1217,7 @@ def convert_many(
                     omit_invalid_eduorg_ogrn=omit_invalid_eduorg_ogrn,
                     omit_null_keys=omit_null_keys,
                     fill_aeo_coherent_inn_ogrn=fill_aeo_coherent_inn_ogrn,
+                    fill_edulevel_from_programm_name=fill_edulevel_from_programm_name,
                     manual_inn_by_ogrn=manual_inn_by_ogrn,
                 )
 
@@ -1295,6 +1365,15 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--no-fill-edulevel-from-programm-name",
+        action="store_true",
+        help=(
+            "Не подставлять EduLevelName из ProgrammName для школьных ступеней "
+            "(см. PROGRAMM_NAMES_THAT_IMPLY_EQUAL_EDU_LEVEL_NAME в convert.py), "
+            "если в XML у программы уровень пустой"
+        ),
+    )
+    p.add_argument(
         "--certificate-inn-overrides-by-ogrn-json",
         type=Path,
         default=None,
@@ -1391,6 +1470,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             omit_invalid_eduorg_ogrn=bool(args.omit_invalid_eduorg_ogrn),
             omit_null_keys=omit_null_keys,
             fill_aeo_coherent_inn_ogrn=not bool(args.no_fill_aeo_coherent_inn_ogrn),
+            fill_edulevel_from_programm_name=not bool(args.no_fill_edulevel_from_programm_name),
             certificate_inn_overrides_by_ogrn=not bool(args.no_certificate_inn_overrides_by_ogrn),
             certificate_inn_overrides_by_ogrn_json=cert_inn_ov_json,
         )

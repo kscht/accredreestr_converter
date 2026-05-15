@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenData>
+  <Certificates>
+    <Certificate>
+      <Id>edulvl-progn-fill</Id>
+      <IsFederal>0</IsFederal>
+      <StatusName>Действующее</StatusName>
+      <RegionName>Москва</RegionName>
+      <EduOrgOGRN>1027700132195</EduOrgOGRN>
+      <Supplements>
+        <Supplement>
+          <Id>sup-edulvl</Id>
+          <EducationalPrograms>
+            <EducationalProgram>
+              <Id>prog-soo</Id>
+              <ProgrammName>Среднее общее образование</ProgrammName>
+              <ProgrammCode>--</ProgrammCode>
+              <IsAccredited>1</IsAccredited>
+            </EducationalProgram>
+            <EducationalProgram>
+              <Id>prog-vo</Id>
+              <ProgrammName>Экономика</ProgrammName>
+              <ProgrammCode>38.03.01</ProgrammCode>
+              <IsAccredited>1</IsAccredited>
+            </EducationalProgram>
+          </EducationalPrograms>
+        </Supplement>
+      </Supplements>
+    </Certificate>
+  </Certificates>
+</OpenData>
