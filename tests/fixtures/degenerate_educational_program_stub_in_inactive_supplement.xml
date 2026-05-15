@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenData>
+  <Certificates>
+    <Certificate>
+      <Id>degen-stub-in-inactive-sup</Id>
+      <IsFederal>0</IsFederal>
+      <StatusName>Действующее</StatusName>
+      <RegionName>Москва</RegionName>
+      <EduOrgOGRN>1027700132195</EduOrgOGRN>
+      <Supplements>
+        <Supplement>
+          <Id>inactive-sup-with-stub</Id>
+          <StatusName>Недействующее</StatusName>
+          <EducationalPrograms>
+            <EducationalProgram>
+              <Id>stub-only-in-inactive-supplement</Id>
+            </EducationalProgram>
+          </EducationalPrograms>
+        </Supplement>
+      </Supplements>
+    </Certificate>
+  </Certificates>
+</OpenData>

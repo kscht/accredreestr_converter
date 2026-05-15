@@ -14,6 +14,7 @@
 - с ручным JSON **ОГРН→ИНН** по умолчанию из **`specs/certificate_inn_overrides_by_ogrn.json`**, если файл есть; отключение: **`--no-certificate-inn-overrides-by-ogrn`**, свой путь: **`--certificate-inn-overrides-by-ogrn-json`**;
 - при пустом **`EduLevelName`** у программы — подстановка из **`ProgrammName`** для школьных ступеней (`PROGRAMM_NAMES_THAT_IMPLY_EQUAL_EDU_LEVEL_NAME`); отключение: **`--no-fill-edulevel-from-programm-name`**;
 - для **непустого** **`EduLevelName`** — нормализация по **`specs/edu_level_names_fz273_map.json`** (ФЗ-273); отключение: **`--no-normalize-edu-level-names-fz273`**, свой JSON: **`--edu-level-names-fz273-map-json`**.
+- без «пустых» (дегенеративных) **`EducationalPrograms[]`** позиций: вырезаются «заглушки» (только `Id` без валидного `ProgrammCode`, `ProgrammName` и `EduLevelName`); в отчёте это поле называется **`total.stripped_degenerate_educational_programs`**.
 
 Полный снимок как в XML по статусу, региону и полям: **`--include-inactive`**, **`--include-outside-rf-region`**, **`--include-null-keys`**.
 

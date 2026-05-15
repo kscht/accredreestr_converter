@@ -2,23 +2,20 @@
 <OpenData>
   <Certificates>
     <Certificate>
-      <Id>edulvl-progn-fill</Id>
+      <Id>degen-stub-cert</Id>
       <IsFederal>0</IsFederal>
       <StatusName>Действующее</StatusName>
       <RegionName>Москва</RegionName>
       <EduOrgOGRN>1027700132195</EduOrgOGRN>
       <Supplements>
         <Supplement>
-          <Id>sup-edulvl</Id>
+          <Id>degen-stub-sup</Id>
           <EducationalPrograms>
             <EducationalProgram>
-              <Id>prog-soo</Id>
-              <ProgrammName>Среднее общее образование</ProgrammName>
-              <ProgrammCode>--</ProgrammCode>
-              <IsAccredited>1</IsAccredited>
+              <Id>8c2eb7cc-d72c-4edd-ae72-d7a105f07130</Id>
             </EducationalProgram>
             <EducationalProgram>
-              <Id>prog-vo</Id>
+              <Id>prog-keep</Id>
               <ProgrammName>Экономика</ProgrammName>
               <ProgrammCode>38.99.01</ProgrammCode>
               <IsAccredited>1</IsAccredited>

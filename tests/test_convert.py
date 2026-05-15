@@ -974,6 +974,87 @@ def test_fill_edulevel_from_programm_name_can_disable(tmp_path: Path) -> None:
     assert "EduLevelName" not in progs[0]
 
 
+def test_edulevel_neighbor_backfill_global_fixture(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    stats = c.convert_many(
+        [FIXTURES / "edulevel_neighbor_backfill_global.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+    )
+    rows = _read_jsonl(out)
+    assert len(rows) == 2
+    assert rows[0]["Supplements"][0]["EducationalPrograms"][0]["EduLevelName"] == (
+        "Высшее образование - бакалавриат"
+    )
+    assert rows[1]["Supplements"][0]["EducationalPrograms"][0]["EduLevelName"] == (
+        "Высшее образование - бакалавриат"
+    )
+    assert stats.edulevel_neighbor_backfill_global_pass_programs == 1
+
+
+def test_edulevel_neighbor_backfill_global_can_disable(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    stats = c.convert_many(
+        [FIXTURES / "edulevel_neighbor_backfill_global.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+        fill_edulevel_from_programm_code_neighbors=False,
+    )
+    rows = _read_jsonl(out)
+    assert "EduLevelName" not in rows[0]["Supplements"][0]["EducationalPrograms"][0]
+    assert stats.edulevel_neighbor_backfill_global_pass_programs == 0
+
+
+def test_programm_code_lookup_key() -> None:
+    assert c.programm_code_lookup_key("380301") == "38.03.01"
+    assert c.programm_code_lookup_key("--") is None
+    assert c.programm_code_lookup_key("38.99.01") == "38.99.01"
+
+
+def test_backfill_neighbor_jsonl_standalone(tmp_path: Path) -> None:
+    p = tmp_path / "two.jsonl"
+    donor = {
+        "Id": "don-line",
+        "Supplements": [
+            {
+                "EducationalPrograms": [
+                    {
+                        "ProgrammCode": "38.03.01",
+                        "ProgrammName": "d",
+                        "EduLevelName": "Высшее образование - бакалавриат",
+                    }
+                ]
+            }
+        ],
+    }
+    recv = {
+        "Id": "recv-line",
+        "Supplements": [
+            {"EducationalPrograms": [{"ProgrammCode": "38.03.01", "ProgrammName": "r"}]}
+        ],
+    }
+    p.write_text(
+        json.dumps(donor, ensure_ascii=False) + "\n" + json.dumps(recv, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    n = c.backfill_edulevel_name_from_programm_code_neighbors_jsonl(p)
+    assert n == 1
+    rows = _read_jsonl(p)
+    assert rows[1]["Supplements"][0]["EducationalPrograms"][0]["EduLevelName"] == (
+        "Высшее образование - бакалавриат"
+    )
+
+
 def test_normalize_edu_level_names_fz273_fixture(tmp_path: Path) -> None:
     out = tmp_path / "o.jsonl"
     stats = c.convert_many(
@@ -1062,6 +1143,30 @@ def test_report_contains_edulevel_from_programm_count(tmp_path: Path) -> None:
     data = json.loads(rep.read_text(encoding="utf-8"))
     assert (
         data["total"]["educational_program_EduLevelName_from_ProgrammName_when_empty"] == 1
+    )
+
+
+def test_report_contains_edulevel_neighbor_backfill_count(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    rep = tmp_path / "rep.json"
+    proc = _run_convert_cli(
+        [
+            str(FIXTURES / "edulevel_neighbor_backfill_global.xml"),
+            "-o",
+            str(out),
+            "--report",
+            str(rep),
+            "--schema",
+            str(SCHEMA),
+            "--progress-every",
+            "0",
+        ]
+    )
+    assert proc.returncode == 0
+    data = json.loads(rep.read_text(encoding="utf-8"))
+    assert (
+        data["total"]["educational_program_EduLevelName_neighbor_backfill_from_ProgrammCode_global_pass"]
+        == 1
     )
 
 
@@ -1483,3 +1588,61 @@ def test_cli_help() -> None:
         check=False,
     )
     assert p2.returncode == 0
+
+
+def test_degenerate_educational_program_stub_stripped(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    stats = c.convert_many(
+        [FIXTURES / "degenerate_educational_program_stub.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+    )
+    row = _read_jsonl(out)[0]
+    progs = row["Supplements"][0]["EducationalPrograms"]
+    assert len(progs) == 1
+    assert progs[0]["Id"] == "prog-keep"
+    assert stats.stripped_degenerate_educational_programs == 1
+
+
+def test_degenerate_stub_in_stripped_supplement_converts(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    c.convert_many(
+        [FIXTURES / "degenerate_educational_program_stub_in_inactive_supplement.xml"],
+        out,
+        merged=True,
+        out_dir=tmp_path,
+        progress_every=0,
+        limit=None,
+        strict=False,
+        schema_path=SCHEMA,
+    )
+    rows = _read_jsonl(out)
+    assert len(rows) == 1
+    assert rows[0]["Id"] == "degen-stub-in-inactive-sup"
+    assert rows[0].get("Supplements") in (None, [])
+
+
+def test_report_stripped_degenerate_educational_programs(tmp_path: Path) -> None:
+    out = tmp_path / "o.jsonl"
+    rep = tmp_path / "rep.json"
+    proc = _run_convert_cli(
+        [
+            str(FIXTURES / "degenerate_educational_program_stub.xml"),
+            "-o",
+            str(out),
+            "--report",
+            str(rep),
+            "--schema",
+            str(SCHEMA),
+            "--progress-every",
+            "0",
+        ]
+    )
+    assert proc.returncode == 0
+    data = json.loads(rep.read_text(encoding="utf-8"))
+    assert data["total"]["stripped_degenerate_educational_programs"] == 1

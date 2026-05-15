@@ -35,13 +35,26 @@
 напр. «Среднее общее образование» при ``ProgrammCode`` «--»), в JSONL подставляется ``EduLevelName`` с тем же текстом.
 Отключение: ``--no-fill-edulevel-from-programm-name`` или API ``fill_edulevel_from_programm_name=False``.
 
-Для непустого ``EduLevelName`` после этого применяется маппинг ``specs/edu_level_names_fz273_map.json`` (явные свёртки
+После записи JSONL по умолчанию выполняется **второй проход** по каждому выходному файлу: глобально по всему файлу
+строится соответствие ``ProgrammCode`` (нормализованный ``XX.YY.ZZ``) → непустой ``EduLevelName`` (по частоте среди
+доноров; при равенстве частот — лексикографически), затем пустые ``EduLevelName`` у программ с тем же кодом
+заполняются из этого словаря. Отключение: ``--no-fill-edulevel-from-programm-code-neighbors`` или API
+``fill_edulevel_from_programm_code_neighbors=False``.
+
+Для непустого ``EduLevelName`` (в т.ч. после подстановки из ``ProgrammName``) **до записи** строки в JSONL
+применяется маппинг ``specs/edu_level_names_fz273_map.json`` (явные свёртки
 в ``entries``, implicit identity для строк из ``canonical_edu_level_names_fz273`` без записи в ``entries``; при
 ``target_edu_level_name``: ``null`` ключ ``EduLevelName`` у программы удаляется). Отключение:
 ``--no-normalize-edu-level-names-fz273`` или API ``normalize_edu_level_names_fz273=False``; свой JSON —
 ``--edu-level-names-fz273-map-json PATH``.
 
 Отдельные ``Certificate.Id`` из ``CERTIFICATE_IDS_OMITTED_FROM_JSONL_BLOCKLIST`` в JSONL **не попадают** (жёсткий блоклист в коде).
+
+Если в ``Supplements[].EducationalPrograms[]`` (до нормализации ``EduLevelName`` по ФЗ-273)
+остаётся позиция без валидного ``ProgrammCode`` (нормализованный ``XX.YY.ZZ``),
+без непустого ``ProgrammName`` и без непустого ``EduLevelName`` (типичный «пустой» узел с одним ``Id`` в XML),
+такая позиция **удаляется** из массива до записи строки (счётчик в отчёте ``--report``:
+``stripped_degenerate_educational_programs``).
 """
 
 from __future__ import annotations
@@ -49,9 +62,11 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import re
 import sys
 import time
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Final, Sequence
@@ -139,6 +154,8 @@ PROGRAMM_NAMES_THAT_IMPLY_EQUAL_EDU_LEVEL_NAME: Final[frozenset[str]] = frozense
         "Не определен",
     }
 )
+
+_PROGRAMM_CODE_TRIPLET_KEY: Final[re.Pattern[str]] = re.compile(r"^\d{2}\.\d{2}\.\d{2}$")
 
 # Не писать в JSONL указанные ``Certificate.Id`` (сравнение UUID без учёта регистра).
 # МБОУ «Логовская ОШ» Велижского района (рег. № 1982): запись исключена из выгрузки по запросу.
@@ -811,6 +828,69 @@ def _educational_program_edulevel_missing(pr: dict[str, Any]) -> bool:
     return not str(v).strip()
 
 
+def _educational_program_programm_name_empty(pr: dict[str, Any]) -> bool:
+    """True, если нет непустого ProgrammName (после нормализации парсера)."""
+    if "ProgrammName" not in pr:
+        return True
+    v = pr["ProgrammName"]
+    if v is None:
+        return True
+    if isinstance(v, str):
+        return not v.strip()
+    return not str(v).strip()
+
+
+def _educational_program_is_degenerate_stub(pr: dict[str, Any]) -> bool:
+    """Программа без кода, имени и уровня (часто в XML только ``Id``)."""
+    if not isinstance(pr, dict):
+        return False
+    return (
+        programm_code_lookup_key(pr.get("ProgrammCode")) is None
+        and _educational_program_programm_name_empty(pr)
+        and _educational_program_edulevel_missing(pr)
+    )
+
+
+def strip_degenerate_educational_program_stubs(
+    record: dict[str, Any], stats: ConversionStats
+) -> int:
+    """Удаляет из ``Supplements[].EducationalPrograms[]`` дегенеративные «заглушки» (только ``Id`` и т.п.).
+
+    Мутирует ``record``; возвращает число удалённых позиций.
+    """
+    removed = 0
+    cert_id = record.get("Id")
+    for si, sup in enumerate(record.get("Supplements") or []):
+        if not isinstance(sup, dict):
+            continue
+        progs = sup.get("EducationalPrograms")
+        if not isinstance(progs, list) or not progs:
+            continue
+        kept: list[Any] = []
+        n_removed_here = 0
+        for pi, pr in enumerate(progs):
+            if isinstance(pr, dict) and _educational_program_is_degenerate_stub(pr):
+                removed += 1
+                n_removed_here += 1
+                stats.stripped_degenerate_educational_programs += 1
+                logging.debug(
+                    "Удалена дегенеративная EducationalProgram: certificate_id=%r "
+                    "supplement_index=%s program_index=%s program_keys=%r",
+                    cert_id,
+                    si,
+                    pi,
+                    sorted(pr.keys()),
+                )
+                continue
+            kept.append(pr)
+        if n_removed_here:
+            if kept:
+                sup["EducationalPrograms"] = kept
+            else:
+                sup.pop("EducationalPrograms", None)
+    return removed
+
+
 def fill_edulevel_name_from_programm_name_when_implied(
     record: dict[str, Any], stats: ConversionStats
 ) -> None:
@@ -833,6 +913,137 @@ def fill_edulevel_name_from_programm_name_when_implied(
             if t in PROGRAMM_NAMES_THAT_IMPLY_EQUAL_EDU_LEVEL_NAME:
                 pr["EduLevelName"] = t
                 stats.edulevel_from_programm_name_supplement_programs += 1
+
+
+def programm_code_lookup_key(programm_code: Any) -> str | None:
+    """Нормализованный ``XX.YY.ZZ`` для ключа доноров второго прохода или ``None``."""
+    if not isinstance(programm_code, str):
+        return None
+    raw = programm_code.strip()
+    if not raw:
+        return None
+    triplet = normalize_triplet_code(raw)
+    if not _PROGRAMM_CODE_TRIPLET_KEY.fullmatch(triplet):
+        return None
+    return triplet
+
+
+def _iter_supplement_educational_programs(record: dict[str, Any]) -> list[dict[str, Any]]:
+    """Плоский список объектов программ (словари) в ``Supplements[].EducationalPrograms[]``."""
+    out: list[dict[str, Any]] = []
+    for sup in record.get("Supplements") or []:
+        if not isinstance(sup, dict):
+            continue
+        for pr in sup.get("EducationalPrograms") or []:
+            if isinstance(pr, dict):
+                out.append(pr)
+    return out
+
+
+def _collect_edulevel_histogram_by_programm_code_pass1(path: Path) -> dict[str, Counter[str]]:
+    """Первый проход по JSONL: для каждого ``ProgrammCode`` — частоты непустых ``EduLevelName``."""
+    tall: dict[str, Counter[str]] = defaultdict(Counter)
+    with path.open(encoding="utf-8", errors="replace") as fh:
+        for line_num, line in enumerate(fh, start=1):
+            s = line.strip()
+            if not s:
+                continue
+            try:
+                row = json.loads(s)
+            except json.JSONDecodeError:
+                logging.warning(
+                    "EduLevelName по ProgrammCode (2-й проход), pass1: пропуск строки %s в %s",
+                    line_num,
+                    path,
+                )
+                continue
+            if not isinstance(row, dict):
+                continue
+            for pr in _iter_supplement_educational_programs(row):
+                code = programm_code_lookup_key(pr.get("ProgrammCode"))
+                if code is None or _educational_program_edulevel_missing(pr):
+                    continue
+                v = pr.get("EduLevelName")
+                if isinstance(v, str) and v.strip():
+                    tall[code][v.strip()] += 1
+                elif v is not None and not isinstance(v, str):
+                    tall[code][str(v).strip()] += 1
+    return tall
+
+
+def _pick_majority_edulevel(counter: Counter[str]) -> str | None:
+    """Уровень с максимальной частотой; при равенстве — лексикографически минимальная строка."""
+    if not counter:
+        return None
+    best = max(counter.values())
+    return min(k for k, c in counter.items() if c == best)
+
+
+def backfill_edulevel_name_from_programm_code_neighbors_jsonl(
+    path: Path,
+    *,
+    omit_null_keys: bool = True,
+    stats: ConversionStats | None = None,
+) -> int:
+    """Второй проход по готовому JSONL: глобально ``ProgrammCode`` → ``EduLevelName`` у пустых программ.
+
+    Два чтения файла: (1) гистограмма непустых уровней по нормализованному коду; (2) подстановка
+    выбранного уровня и атомарная перезапись файла через временный файл рядом с исходным.
+    """
+    path = path.resolve()
+    if not path.is_file():
+        logging.warning("EduLevelName по ProgrammCode (2-й проход): нет файла %s", path)
+        return 0
+    tall = _collect_edulevel_histogram_by_programm_code_pass1(path)
+    code_to_level: dict[str, str] = {}
+    for code, ctr in tall.items():
+        picked = _pick_majority_edulevel(ctr)
+        if picked is not None:
+            code_to_level[code] = picked
+    tmp_path = path.with_name(path.name + ".neighbor_tmp")
+    filled = 0
+    try:
+        with path.open(encoding="utf-8", errors="replace") as inp, tmp_path.open(
+            "w", encoding="utf-8", newline="\n"
+        ) as out:
+            for line_num, line in enumerate(inp, start=1):
+                if not line.strip():
+                    continue
+                raw_line = line if line.endswith("\n") else line + "\n"
+                s = line.strip()
+                try:
+                    row = json.loads(s)
+                except json.JSONDecodeError:
+                    logging.warning(
+                        "EduLevelName по ProgrammCode (2-й проход), pass2: строка %s не JSON, "
+                        "записана как есть (%s)",
+                        line_num,
+                        path,
+                    )
+                    out.write(raw_line)
+                    continue
+                if not isinstance(row, dict):
+                    continue
+                for pr in _iter_supplement_educational_programs(row):
+                    if not _educational_program_edulevel_missing(pr):
+                        continue
+                    code = programm_code_lookup_key(pr.get("ProgrammCode"))
+                    if code is None or code not in code_to_level:
+                        continue
+                    pr["EduLevelName"] = code_to_level[code]
+                    filled += 1
+                safe = ensure_json_safe(row)
+                if omit_null_keys:
+                    safe = omit_empty_json_values(safe)
+                out.write(json.dumps(safe, ensure_ascii=False) + "\n")
+        os.replace(tmp_path, path)
+    except BaseException:  # noqa: BLE001
+        if tmp_path.is_file():
+            tmp_path.unlink(missing_ok=True)
+        raise
+    if stats is not None:
+        stats.edulevel_neighbor_backfill_global_pass_programs += filled
+    return filled
 
 
 @dataclass(frozen=True, slots=True)
@@ -1000,6 +1211,8 @@ class ConversionStats:
     supplement_aeo_degenerate_shell_fill_ogrn: int = 0
     supplement_aeo_degenerate_shell_fill_kpp: int = 0
     edulevel_from_programm_name_supplement_programs: int = 0
+    stripped_degenerate_educational_programs: int = 0
+    edulevel_neighbor_backfill_global_pass_programs: int = 0
     edulevel_fz273_renamed_programs: int = 0
     edulevel_fz273_cleared_programs: int = 0
     edulevel_fz273_unknown_level_programs: int = 0
@@ -1082,6 +1295,12 @@ class ConversionStats:
                 },
                 "educational_program_EduLevelName_from_ProgrammName_when_empty": (
                     self.edulevel_from_programm_name_supplement_programs
+                ),
+                "stripped_degenerate_educational_programs": (
+                    self.stripped_degenerate_educational_programs
+                ),
+                "educational_program_EduLevelName_neighbor_backfill_from_ProgrammCode_global_pass": (
+                    self.edulevel_neighbor_backfill_global_pass_programs
                 ),
                 "educational_program_EduLevelName_fz273_map": {
                     "renamed_to_canonical_target": self.edulevel_fz273_renamed_programs,
@@ -1172,6 +1391,9 @@ def convert_one(
                     fill_degenerate_supplement_aeo_identity_from_certificate_donors(record, stats)
                 if fill_edulevel_from_programm_name:
                     fill_edulevel_name_from_programm_name_when_implied(record, stats)
+                # Удаляем «заглушки» до нормализации EduLevelName по ФЗ-273:
+                # если маппинг позже удалит ключ (target=null), саму программу не считаем дегенеративной.
+                strip_degenerate_educational_program_stubs(record, stats)
                 if edu_level_fz273 is not None:
                     normalize_edu_level_names_via_fz273_map(record, edu_level_fz273, stats)
                 if omit_inactive and (
@@ -1233,6 +1455,7 @@ def convert_many(
     omit_null_keys: bool = True,
     fill_aeo_coherent_inn_ogrn: bool = True,
     fill_edulevel_from_programm_name: bool = True,
+    fill_edulevel_from_programm_code_neighbors: bool = True,
     certificate_inn_overrides_by_ogrn: bool = True,
     certificate_inn_overrides_by_ogrn_json: Path | None = None,
     normalize_edu_level_names_fz273: bool = True,
@@ -1273,6 +1496,11 @@ def convert_many(
             ступеней ``PROGRAMM_NAMES_THAT_IMPLY_EQUAL_EDU_LEVEL_NAME``. По умолчанию **True**;
             отключить — ``fill_edulevel_from_programm_name=False`` или CLI
             ``--no-fill-edulevel-from-programm-name``.
+        fill_edulevel_from_programm_code_neighbors: Если True, после записи каждого выходного JSONL
+            выполнить второй проход по файлу: глобально по ``ProgrammCode`` подставить ``EduLevelName`` из
+            других программ того же файла (мода по частоте). По умолчанию **True**; отключить —
+            ``fill_edulevel_from_programm_code_neighbors=False`` или CLI
+            ``--no-fill-edulevel-from-programm-code-neighbors``.
         normalize_edu_level_names_fz273: Если True, после этого нормализовать непустой **EduLevelName**
             по ``specs/edu_level_names_fz273_map.json`` (или путь из ``edu_level_names_fz273_map_json``).
             По умолчанию **True**; отключить — ``normalize_edu_level_names_fz273=False`` или CLI
@@ -1366,6 +1594,26 @@ def convert_many(
                     manual_inn_by_ogrn=manual_inn_by_ogrn,
                     edu_level_fz273=edu_level_fz273,
                 )
+
+    if fill_edulevel_from_programm_code_neighbors:
+        outpaths: list[Path] = []
+        if merged:
+            if output is None:
+                raise ValueError("Внутренняя ошибка: merged без output")
+            outpaths = [output.resolve()]
+        else:
+            outpaths = [(out_dir / f"{inp.stem}.jsonl").resolve() for inp in inputs]
+        for op in outpaths:
+            n = backfill_edulevel_name_from_programm_code_neighbors_jsonl(
+                op,
+                omit_null_keys=omit_null_keys,
+                stats=stats,
+            )
+            logging.info(
+                "EduLevelName по ProgrammCode (глобальный 2-й проход): исправлено программ: %s (%s)",
+                n,
+                op,
+            )
 
     return stats
 
@@ -1520,6 +1768,14 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         ),
     )
     p.add_argument(
+        "--no-fill-edulevel-from-programm-code-neighbors",
+        action="store_true",
+        help=(
+            "Не выполнять второй проход по выходному JSONL: глобальная подстановка пустого EduLevelName "
+            "из других строк файла с тем же ProgrammCode (нормализованный XX.YY.ZZ)"
+        ),
+    )
+    p.add_argument(
         "--no-normalize-edu-level-names-fz273",
         action="store_true",
         help=(
@@ -1639,6 +1895,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             omit_null_keys=omit_null_keys,
             fill_aeo_coherent_inn_ogrn=not bool(args.no_fill_aeo_coherent_inn_ogrn),
             fill_edulevel_from_programm_name=not bool(args.no_fill_edulevel_from_programm_name),
+            fill_edulevel_from_programm_code_neighbors=not bool(
+                args.no_fill_edulevel_from_programm_code_neighbors
+            ),
             certificate_inn_overrides_by_ogrn=not bool(args.no_certificate_inn_overrides_by_ogrn),
             certificate_inn_overrides_by_ogrn_json=cert_inn_ov_json,
             normalize_edu_level_names_fz273=not bool(args.no_normalize_edu_level_names_fz273),

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenData>
+  <Certificates>
+    <Certificate>
+      <Id>nb-recv</Id>
+      <IsFederal>0</IsFederal>
+      <StatusName>Действующее</StatusName>
+      <RegionName>Москва</RegionName>
+      <EduOrgOGRN>1027700132195</EduOrgOGRN>
+      <Supplements>
+        <Supplement>
+          <Id>nb-sup-r</Id>
+          <EducationalPrograms>
+            <EducationalProgram>
+              <Id>nb-prog-empty</Id>
+              <ProgrammName>Экономика</ProgrammName>
+              <ProgrammCode>38.03.01</ProgrammCode>
+              <IsAccredited>1</IsAccredited>
+            </EducationalProgram>
+          </EducationalPrograms>
+        </Supplement>
+      </Supplements>
+    </Certificate>
+    <Certificate>
+      <Id>nb-donor</Id>
+      <IsFederal>0</IsFederal>
+      <StatusName>Действующее</StatusName>
+      <RegionName>Москва</RegionName>
+      <EduOrgOGRN>1027700132195</EduOrgOGRN>
+      <Supplements>
+        <Supplement>
+          <Id>nb-sup-d</Id>
+          <EducationalPrograms>
+            <EducationalProgram>
+              <Id>nb-prog-donor</Id>
+              <ProgrammName>Экономика (донор)</ProgrammName>
+              <ProgrammCode>38.03.01</ProgrammCode>
+              <EduLevelName>ВО - бакалавриат</EduLevelName>
+              <IsAccredited>1</IsAccredited>
+            </EducationalProgram>
+          </EducationalPrograms>
+        </Supplement>
+      </Supplements>
+    </Certificate>
+  </Certificates>
+</OpenData>
