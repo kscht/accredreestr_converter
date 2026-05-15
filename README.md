@@ -40,12 +40,14 @@ python convert.py data/data-*-structure-*.xml \
 - **`specs/`** — машиночитаемые артефакты: маппинги KG/SQL/Prisma, JSON Schema, эталонный XML структуры, `field_labels.json`.
 - **`tools/`** — перегенерация (`generate_*`), случайные подвыборки JSONL, аналитика (`analyze_*`, `scan_*`), справочник программ (`extract_*`); см. таблицу ниже и **[`docs/tools.md`](docs/tools.md)**.
 - **`docs/tools.md`** — обзор скриптов **`tools/`**, аудитов и связь с умолчаниями **`convert.py`**.
+- **`docs/convert.md`** — подробная логика **`convert.py`**: парсинг, срезы, нормализация, дозаполнения, 2-й проход, отчёт `--report`.
 - **`docs/diagrams/`** — диаграммы (исходники и экспорт).
 - **Корень** — основной CLI (`convert.py`, `download.py`, `scrape_opendata.py`), пакеты `sql_convert/`, `parquet_convert/`, `cypher_convert/`.
 
 | Путь | Назначение |
 |------|------------|
 | `docs/tools.md` | Обзор **`tools/`**: генерация, выборки, аудиты; умолчания **`convert.py`** и поля ИНН/КПП/ОГРН |
+| `docs/convert.md` | Логика конвертера: чистки, нормализация, дозаполнения, счётчики отчёта |
 | `tools/generate_field_labels.py` | Генерация `specs/field_labels.json` из эталонной XML-схемы |
 | `specs/field_labels.json` | Подписи полей для UI (`python tools/generate_field_labels.py`) |
 | `convert.py` | Конвертация XML → JSONL, CLI; дозаполнение ИНН/ОГРН/КПП в AEO и на корне сертификата (см. `convert.py` docstring и **`AGENTS.md`**); отключение дозаполнений AEO/сертификата: **`--no-fill-aeo-coherent-inn-ogrn`**; ручной ОГРН→ИНН: **`specs/certificate_inn_overrides_by_ogrn.json`**, **`--no-certificate-inn-overrides-by-ogrn`**, **`--certificate-inn-overrides-by-ogrn-json`** |

@@ -53,6 +53,7 @@
 | `tools/audit_branch_supplement_aeo_inn_gap.py` | Аудит выборки из `extract_branch_supplement_aeo_inn_gap_jsonl`; по умолчанию `examples/dataset_branch_supplement_aeo_inn_gap_audit.json` |
 | `tools/scan_jsonl_placeholder_scalars.py` | Потоковый подсчёт скалярных «плейсхолдеров» в JSONL (нули, тире, маркеры «нет данных» и т.п.) по JSON-путям; см. `--help` |
 | `docs/tools.md` | Обзор **`tools/`**, аудиты, выборки; умолчания **`convert.py`** |
+| `docs/convert.md` | Подробная логика **`convert.py`**: пайплайн, срезы, нормализация, дозаполнения, 2-й проход |
 | `docs/cypher_export.md` | JSONL → Cypher (Neo4j) по `specs/kg/mapping.json` |
 | `examples/accred_graph_preview.cypher` | Мини-пример графа (1 сертификат) для Neo4j Browser |
 | `cypher_convert/export_cypher.py` | CLI: `python -m cypher_convert.export_cypher …` |
