@@ -55,6 +55,10 @@
 без непустого ``ProgrammName`` и без непустого ``EduLevelName`` (типичный «пустой» узел с одним ``Id`` в XML),
 такая позиция **удаляется** из массива до записи строки (счётчик в отчёте ``--report``:
 ``stripped_degenerate_educational_programs``).
+
+Поля наименований организации (``EduOrgFullName``, ``EduOrgShortName``, ``FullName``, ``ShortName`` и т.п.)
+**не** проходят типографскую нормализацию display v1: только ``clean_text`` и ``ensure_json_safe``.
+Черновик словаря отображаемых имён — отдельный контур (``org_name_normalize.py``, OpenRouter); см. ``docs/tools.md``.
 """
 
 from __future__ import annotations
@@ -237,6 +241,9 @@ def load_schema_tag_names(schema_path: Path) -> set[str]:
 
 def clean_text(s: str | None) -> str | None:
     """Нормализует пробелы и удаляет проблемные символы из строки.
+
+    Для всех скалярных полей, включая наименования организаций; типографика имён (ОПФ, кавычки,
+    КАПС) в конвертере **не** применяется — см. ``org_name_normalize`` и ``docs/tools.md``.
 
     Args:
         s: Исходная строка или None.

@@ -2,7 +2,7 @@
 
 Обзор утилит в **`tools/`** и связь с **`convert.py`**. Входом для аналитики и выборок обычно служит **JSONL** из конвертера.
 
-Подробное описание этапов конвертера (парсинг, срезы, дозаполнения, ФЗ-273, 2-й проход): **[`docs/convert.md`](convert.md)**.
+Подробное описание этапов конвертера (парсинг, срезы, дозаполнения, нормализация **`EduLevelName`** по ФЗ-273, глобальный 2-й проход по программам): **[`docs/convert.md`](convert.md)**.
 
 ## Связь с `convert.py` (кратко)
 
@@ -84,13 +84,27 @@ python3 tools/audit_dataset_region.py "$J"
 python3 tools/extract_branch_supplement_aeo_inn_gap_jsonl.py "$J"
 python3 tools/audit_branch_supplement_aeo_inn_gap.py examples/branch_supplement_aeo_inn_gap.jsonl
 python3 tools/analyze_aeo_cert_vs_supplement.py "$J"
+python3 tools/audit_dataset_branches.py "$J"
 python3 tools/sample_one_certificate_per_edu_level_name.py "$J"
 python3 tools/generate_test_jsonl_samples.py "$J"
 ```
 
-Каталоги **`examples/jsonl_samples/`** и **`examples/jsonl_samples_aeo_mismatch/`** в **`.gitignore`** (артефакты подвыборок локально). Крупный **`examples/branch_supplement_aeo_inn_gap.jsonl`** тоже в **`.gitignore`**.
+Каталоги **`examples/jsonl_samples/`** и **`examples/jsonl_samples_aeo_mismatch/`** в **`.gitignore`** (артефакты подвыборок локально). Крупные выборки в **`.gitignore`**: **`examples/branch_supplement_aeo_inn_gap.jsonl`**, **`examples/branch_supplements_diff_aeo_id.jsonl`**, **`examples/certificate_lines_with_branch_supplements.jsonl`** (флаги **`--branch-jsonl`** / **`--problem-jsonl`** у **`audit_dataset_branches.py`** на полном JSONL).
 
-После смены логики нормализации идентификаторов **или** дозаполнения AEO в **`convert.py`** пересоберите JSONL и заново запустите аудиты (**`audit_dataset_identity_fields.py`**, при необходимости регион/статус/**`audit_dataset_null_statusname.py`**/**`audit_dataset_edu_program_levels.py`**/AEO), чтобы **`examples/dataset_*_audit.json`** и счётчики **`nonempty_not_digits_only_after_clean`** / **`*borrowable*`** отражали текущий снимок. Выборку «филиал / пустой INN в supplement» пересобирайте **`extract_branch_supplement_aeo_inn_gap_jsonl.py`**, затем **`audit_branch_supplement_aeo_inn_gap.py`** (см. **`.gitignore`** для крупного **`examples/branch_supplement_aeo_inn_gap.jsonl`**).
+После смены логики нормализации идентификаторов **или** дозаполнения AEO в **`convert.py`** пересоберите JSONL и заново запустите аудиты (**`audit_dataset_identity_fields.py`**, при необходимости регион/статус/**`audit_dataset_null_statusname.py`**/**`audit_dataset_edu_program_levels.py`**/AEO), чтобы **`examples/dataset_*_audit.json`** и счётчики **`nonempty_not_digits_only_after_clean`** / **`*borrowable*`** отражали текущий снимок. Выборку «филиал / пустой INN в supplement» пересобирайте **`extract_branch_supplement_aeo_inn_gap_jsonl.py`**, затем **`audit_branch_supplement_aeo_inn_gap.py`** (см. **`.gitignore`** для крупного **`examples/branch_supplement_aeo_inn_gap.jsonl`**). Отчёт **`audit_dataset_branches.py`** (филиалы по **`AEO.Id`**) пересобирается одной командой из JSONL (см. блок выше).
+
+---
+
+## Наименования организаций (вне конвертера)
+
+**`convert.py` не** выполняет типографскую нормализацию строк **`EduOrg*`** / **`FullName`** / **`ShortName`**. Черновик словаря «канонического» отображения — отдельный контур через LLM (OpenRouter).
+
+| Скрипт / файл | Назначение |
+|---------------|------------|
+| **`org_name_normalize.py`** (корень репозитория) | Вспомогательные функции для черновика: итерация шести полей **`iter_organization_name_fields`**, маски **`№`** для промптов и т.п. **Не** импортируется конвертером. |
+| **`draft_org_name_dictionary_openrouter.py`** | Запросы к OpenRouter (`httpx`): формат черновика **v2** с **`by_model`**, **`--merge-output`**, **`--second-model`**, выборки **`--full-unique-sample`** / **`--limit`**. Ключ **`OPENROUTER_API_KEY`** — см. **`.env.example`**. |
+| **`diff_org_name_dictionaries.py`** | Сравнение черновиков по **`raw`**. Для одного merged-файла v2 — **`--model-a`** / **`--model-b`** (опц. **`--model-c`**). |
+| **`audit_dataset_branches.py`** | Supplement-филиалы: **`ActualEducationOrganization.Id`** в приложении ≠ **`Id`** корневой AEO. Выход по умолчанию: **`examples/dataset_branches_audit.json`**. |
 
 ---
 
@@ -104,4 +118,4 @@ python3 tools/generate_test_jsonl_samples.py "$J"
 
 ## Зависимости
 
-Скрипты рассчитаны на запуск из корня репозитория с тем же **Python**, что и проект (`python tools/...` или `python3`). Дополнительные пакеты сверх **`requirements.txt`** для большинства утилит **не** требуются ( **`lxml`** — для генерации подписей из XML).
+Скрипты рассчитаны на запуск из корня репозитория с тем же **Python**, что и проект (`python tools/...` или `python3`). Дополнительные пакеты: **`httpx`** — для **`draft_org_name_dictionary_openrouter.py`** (также в **`requirements.txt`**). Для большинства остальных утилит достаточно базового набора (**`lxml`** — для генерации подписей из XML).

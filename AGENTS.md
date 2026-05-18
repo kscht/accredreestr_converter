@@ -24,7 +24,7 @@
 
 | Файл | Роль |
 |------|------|
-| `convert.py` | Парсинг, типы, CLI, `convert_many`, статистика; нормализация **`ProgrammCode`** и **`UGSCode`**; срез корневых статусов и приложений по умолчанию (см. `CERTIFICATE_ROOT_STATUSES_OMITTED_FROM_JSONL` / `SUPPLEMENT_STATUSES_STRIPPED_FROM_JSONL`); дозаполнение **INN**/**OGRN**/**KPP** при **`fill_aeo_coherent_inn_ogrn`**: согласованные доноры, ветка «филиал по `Id`», подъём **EduOrgINN**/**EduOrgOGRN** с корня/supplement, «оболочки» supplement AEO без цифровых ИНН/ОГРН; ручной JSON **`specs/certificate_inn_overrides_by_ogrn.json`** (ОГРН→ИНН; CLI **`--no-certificate-inn-overrides-by-ogrn`**, **`--certificate-inn-overrides-by-ogrn-json`**); жёсткий блоклист **`CERTIFICATE_IDS_OMITTED_FROM_JSONL_BLOCKLIST`** по **`Certificate.Id`** (UUID, без учёта регистра); отключение всех перечисленных дозаполнений AEO/сертификата — **`--no-fill-aeo-coherent-inn-ogrn`**; при пустом **`EduLevelName`** у **`EducationalPrograms[]`** — подстановка из **`ProgrammName`**, если имя совпадает со школьной ступенью реестра (`PROGRAMM_NAMES_THAT_IMPLY_EQUAL_EDU_LEVEL_NAME` в коде); отключить — **`--no-fill-edulevel-from-programm-name`**; нормализация непустого **`EduLevelName`** по **`specs/edu_level_names_fz273_map.json`** (ФЗ-273); отключить — **`--no-normalize-edu-level-names-fz273`**, свой JSON — **`--edu-level-names-fz273-map-json`**; полный снимок по статусу — **`--include-inactive`** |
+| `convert.py` | Парсинг, типы, CLI, `convert_many`, статистика; **не** типографика **`EduOrg*`/`FullName`/`ShortName`** (только `clean_text`); нормализация **`ProgrammCode`** и **`UGSCode`**; срез корневых статусов и приложений по умолчанию (см. `CERTIFICATE_ROOT_STATUSES_OMITTED_FROM_JSONL` / `SUPPLEMENT_STATUSES_STRIPPED_FROM_JSONL`); дозаполнение **INN**/**OGRN**/**KPP** при **`fill_aeo_coherent_inn_ogrn`**: согласованные доноры, ветка «филиал по `Id`», подъём **EduOrgINN**/**EduOrgOGRN** с корня/supplement, «оболочки» supplement AEO без цифровых ИНН/ОГРН; ручной JSON **`specs/certificate_inn_overrides_by_ogrn.json`** (ОГРН→ИНН; CLI **`--no-certificate-inn-overrides-by-ogrn`**, **`--certificate-inn-overrides-by-ogrn-json`**); жёсткий блоклист **`CERTIFICATE_IDS_OMITTED_FROM_JSONL_BLOCKLIST`** по **`Certificate.Id`** (UUID, без учёта регистра); отключение всех перечисленных дозаполнений AEO/сертификата — **`--no-fill-aeo-coherent-inn-ogrn`**; при пустом **`EduLevelName`** у **`EducationalPrograms[]`** — подстановка из **`ProgrammName`**, если имя совпадает со школьной ступенью реестра (`PROGRAMM_NAMES_THAT_IMPLY_EQUAL_EDU_LEVEL_NAME` в коде); отключить — **`--no-fill-edulevel-from-programm-name`**; нормализация непустого **`EduLevelName`** по **`specs/edu_level_names_fz273_map.json`** (ФЗ-273); отключить — **`--no-normalize-edu-level-names-fz273`**, свой JSON — **`--edu-level-names-fz273-map-json`**; полный снимок по статусу — **`--include-inactive`** |
 | `tools/generate_field_labels.py` | JSON `specs/field_labels.json`: путь `Certificate/…` → русская подпись из схемы |
 | `specs/field_labels.json` | Сгенерированный словарь подписей для UI (`python tools/generate_field_labels.py`) |
 | `specs/kg/mapping.json` | Узлы/рёбра для Knowledge Graph из строк JSONL |
@@ -52,6 +52,10 @@
 | `tools/extract_branch_supplement_aeo_inn_gap_jsonl.py` | JSONL выборки supplement AEO: **`Id` ≠ корня**, пустой **INN**, донор как в `convert`; объекты `branch_supplement_aeo_inn_gap_v1`; **`--limit N`**; пример карточек `examples/branch_supplement_aeo_inn_gap_sample.jsonl`; полный `examples/branch_supplement_aeo_inn_gap.jsonl` — в `.gitignore` |
 | `tools/audit_branch_supplement_aeo_inn_gap.py` | Аудит выборки из `extract_branch_supplement_aeo_inn_gap_jsonl`; по умолчанию `examples/dataset_branch_supplement_aeo_inn_gap_audit.json` |
 | `tools/scan_jsonl_placeholder_scalars.py` | Потоковый подсчёт скалярных «плейсхолдеров» в JSONL (нули, тире, маркеры «нет данных» и т.п.) по JSON-путям; см. `--help` |
+| `org_name_normalize.py` | В корне: вспомогательный модуль для **черновика** словаря имён (итерация шести полей **`iter_organization_name_fields`**, маска **`№`** для промптов и др.). **Не** вызывается из **`convert.py`**. |
+| `tools/draft_org_name_dictionary_openrouter.py` | Черновик словаря наименований через **OpenRouter** (формат v2: **`by_model`**, опции **`--second-model`**, **`--merge-output`**, выборки **`--full-unique-sample`** / **`--limit`**); ключ **`OPENROUTER_API_KEY`** (см. **`.env.example`**). Нужен пакет **`httpx`**. |
+| `tools/diff_org_name_dictionaries.py` | Сравнение JSON черновиков по **`raw`**; два файла или один v2 — флаги **`--model-a`**, **`--model-b`**, **`--model-c`**. Подробнее — **`docs/tools.md`**. |
+| `tools/audit_dataset_branches.py` | Supplement-филиалы: **`ActualEducationOrganization.Id`** в приложении ≠ **`Id`** корневой AEO (как ветка «филиал по Id» в **`convert.py`**); по умолчанию **`examples/dataset_branches_audit.json`**; опц. **`--branch-jsonl`**, **`--problem-jsonl`**. |
 | `docs/tools.md` | Обзор **`tools/`**, аудиты, выборки; умолчания **`convert.py`** |
 | `docs/convert.md` | Подробная логика **`convert.py`**: пайплайн, срезы, нормализация, дозаполнения, 2-й проход |
 | `docs/cypher_export.md` | JSONL → Cypher (Neo4j) по `specs/kg/mapping.json` |
@@ -95,6 +99,9 @@
 | `tests/test_audit_dataset_region.py` | Аудит RegionName |
 | `tests/test_branch_supplement_aeo_inn_gap.py` | Выборка и аудит «филиал / пустой INN в supplement» |
 | `tests/test_scan_jsonl_placeholder_scalars.py` | Сканер плейсхолдеров в JSONL |
+| `tests/test_draft_org_name_dictionary_openrouter.py` | Черновик словаря (OpenRouter), merge и формат v2 |
+| `tests/test_diff_org_name_dictionaries.py` | Diff черновиков словаря |
+| `tests/test_audit_dataset_branches.py` | Аудит supplement-филиалов по AEO Id |
 
 ## CLI `convert.py`
 
@@ -132,7 +139,7 @@
 
 ## Зависимости
 
-`requirements.txt`: `lxml`, `requests`, `pytest`, **`jsonschema`**, **`psycopg[binary]`** (PostgreSQL), **`pymysql`** (MySQL), **`duckdb`**. В конвертере **нет** `xmltodict`, `pandas`, `pydantic`.
+`requirements.txt`: `lxml`, `requests`, **`httpx`** (черновик словаря OpenRouter), `pytest`, **`jsonschema`**, **`psycopg[binary]`** (PostgreSQL), **`pymysql`** (MySQL), **`duckdb`**. В конвертере **нет** `xmltodict`, `pandas`, `pydantic`.
 
 ## Тесты
 
@@ -147,6 +154,6 @@ pytest
 
 - **`specs/`** — маппинги KG/SQL/Prisma, JSON Schema, эталонный XML, `field_labels.json` (в git).
 - **`docs/diagrams/`** — диаграммы (исходники Mermaid, экспорт изображений; в git).
-- **`tools/`** — перегенерация (`generate_*`), выборки, аналитика и справочники (см. таблицу выше).
+- **`tools/`** — перегенерация (`generate_*`), выборки, аналитика и справочники; опционально **черновик словаря имён** (OpenRouter) и **аудит филиалов** (см. таблицу выше).
 - **`data/*.xml`** — не в репозитории (скачанные выгрузки).
 - **`out/`** — не в репозитории (JSONL, логи, отчёты `convert.py`). Повторный запуск с тем же именем файла **перезаписывает** его (`"w"`).

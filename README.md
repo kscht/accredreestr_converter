@@ -38,9 +38,9 @@ python convert.py data/data-*-structure-*.xml \
 ## Структура репозитория
 
 - **`specs/`** — машиночитаемые артефакты: маппинги KG/SQL/Prisma, JSON Schema, эталонный XML структуры, `field_labels.json`.
-- **`tools/`** — перегенерация (`generate_*`), случайные подвыборки JSONL, аналитика (`analyze_*`, `scan_*`), справочник программ (`extract_*`); см. таблицу ниже и **[`docs/tools.md`](docs/tools.md)**.
+- **`tools/`** — перегенерация (`generate_*`), случайные подвыборки JSONL, аналитика (`analyze_*`, `scan_*`), справочник программ (`extract_*`), опционально черновик словаря имён OpenRouter и аудит филиалов; см. таблицу ниже и **[`docs/tools.md`](docs/tools.md)**.
 - **`docs/tools.md`** — обзор скриптов **`tools/`**, аудитов и связь с умолчаниями **`convert.py`**.
-- **`docs/convert.md`** — подробная логика **`convert.py`**: парсинг, срезы, нормализация, дозаполнения, 2-й проход, отчёт `--report`.
+- **`docs/convert.md`** — подробная логика **`convert.py`**: парсинг, срезы, нормализация кодов/ступеней ФЗ-273, дозаполнения, глобальный 2-й проход по программам, отчёт `--report`.
 - **`docs/diagrams/`** — диаграммы (исходники и экспорт).
 - **Корень** — основной CLI (`convert.py`, `download.py`, `scrape_opendata.py`), пакеты `sql_convert/`, `parquet_convert/`, `cypher_convert/`.
 
@@ -68,6 +68,10 @@ python convert.py data/data-*-structure-*.xml \
 | `tools/audit_dataset_status.py` | Гистограммы корневых **`StatusName`** и **`TypeName`** → `examples/dataset_status_audit.json` |
 | `tools/audit_dataset_region.py` | Гистограмма **`RegionName`**, счётчик псевдорегиона «за пределами РФ» → `examples/dataset_region_audit.json` |
 | `tools/scan_jsonl_placeholder_scalars.py` | Подсчёт скалярных плейсхолдеров в JSONL по путям (нули, тире, «н/д» и т.п.); см. `--help` |
+| `org_name_normalize.py` | Вспомогательные функции для черновика словаря имён (**вне** конвертера); см. **`docs/tools.md`** |
+| `tools/draft_org_name_dictionary_openrouter.py` | Черновик словаря через OpenRouter (**`httpx`**, **`OPENROUTER_API_KEY`**); см. **`.env.example`** и **`docs/tools.md`** |
+| `tools/diff_org_name_dictionaries.py` | Сравнение JSON черновиков (в т.ч. две модели в одном файле v2) |
+| `tools/audit_dataset_branches.py` | Аудит supplement-филиалов (AEO Id ≠ корня) → `examples/dataset_branches_audit.json` |
 | `docs/cypher_export.md` | JSONL → Cypher (Neo4j) по KG-mapping |
 | `cypher_convert/export_cypher.py` | Экспорт `.cypher`: `python -m cypher_convert.export_cypher …` |
 | `docs/sql_convert.md` | Пояснения к SQL: ключи, вложенность, типы |
@@ -83,7 +87,7 @@ python convert.py data/data-*-structure-*.xml \
 | `data/` | Скачанные `.xml` (в git не коммитятся, см. `.gitignore`) |
 | `out/` | Результаты конвертации (`.jsonl`, логи, `--report`) — каталог в git не коммитится |
 | `tests/` | `pytest`, фикстуры в `tests/fixtures/` |
-| `requirements.txt` | `lxml`, `requests`, `pytest`, `jsonschema`, `psycopg[binary]`, `pymysql`, `duckdb` |
+| `requirements.txt` | `lxml`, `requests`, `httpx`, `pytest`, `jsonschema`, `psycopg[binary]`, `pymysql`, `duckdb` |
 | `AGENTS.md` | Краткий контекст для ИИ / нового чата |
 
 ## Откуда брать данные

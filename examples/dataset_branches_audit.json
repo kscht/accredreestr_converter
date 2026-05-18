@@ -1,0 +1,197 @@
+{
+  "source_jsonl": "out/data-20260403-structure-20160713.jsonl",
+  "description_ru": "Филиалы по правилу 1: у supplement ActualEducationOrganization.Id и у корневой AEO оба Id непусты и различаются (сравнение без учёта регистра). Совпадает с _aeo_supplement_uid_differs_from_root в convert.py.",
+  "rule_id": "diff_aeo_id",
+  "certificate_lines_total": 43724,
+  "certificates_with_root_ActualEducationOrganization": 43724,
+  "certificates_with_any_supplement_aeo": 43167,
+  "certificates_with_any_branch_by_rule_1": 2996,
+  "supplement_aeo_cards_total": 51696,
+  "supplement_aeo_same_Id_as_root": 46167,
+  "supplement_aeo_branch_by_diff_Id_rule_1": 5525,
+  "supplement_aeo_incomparable_Id": 4,
+  "branch_hits_IsForBranch_histogram": {
+    "null": 4743,
+    "true": 782
+  },
+  "outputs": {
+    "branch_jsonl": "examples/branch_supplements_diff_aeo_id.jsonl",
+    "problem_jsonl": "examples/certificate_lines_with_branch_supplements.jsonl"
+  },
+  "examples_branch_hits": [
+    {
+      "record_kind": "branch_supplement_diff_aeo_id_v1",
+      "rule_id": "diff_aeo_id",
+      "certificate_id": "0032eb56-4ca3-6241-9ce7-490939cb6329",
+      "supplement_index": 1,
+      "root_aeo_id": "38df6d0b-7a76-ac10-6c03-955de8beb087",
+      "supplement_aeo_id": "82c00b8c-fd04-bfa9-556d-f3e1a678c9e1",
+      "EduOrgINN": "3812120875",
+      "EduOrgOGRN": "1093850003610",
+      "certificate_EduOrgFullName": "Государственное автономное профессиональное образовательное учреждение Иркутской области \"Иркутский колледж экономики, сервиса и туризма\"",
+      "certificate_EduOrgShortName": "ГАПОУ ИКЭСТ",
+      "root_ActualEducationOrganization": {
+        "Id": "38df6d0b-7a76-ac10-6c03-955de8beb087",
+        "FullName": "Государственное автономное профессиональное образовательное учреждение Иркутской области \"Иркутский колледж экономики, сервиса и туризма\"",
+        "ShortName": "ГАПОУ ИКЭСТ",
+        "INN": "3812120875",
+        "OGRN": "1093850003610",
+        "KPP": "381201001",
+        "RegionName": "Иркутская область"
+      },
+      "supplement_ActualEducationOrganization": {
+        "Id": "82c00b8c-fd04-bfa9-556d-f3e1a678c9e1",
+        "FullName": "Филиал Государственного автономного профессионального образовательного учреждения Иркутской области \"Иркутский колледж экономики, сервиса и туризма\" в г.Ангарске",
+        "INN": "3812120875",
+        "OGRN": "1093850003610",
+        "KPP": "381201001"
+      },
+      "supplement_meta": {
+        "StatusName": "Действующее",
+        "Number": "2",
+        "SerialNumber": "38 А 01",
+        "FormNumber": "0001869"
+      }
+    },
+    {
+      "record_kind": "branch_supplement_diff_aeo_id_v1",
+      "rule_id": "diff_aeo_id",
+      "certificate_id": "004f1c41-e11e-43a8-b9e1-d419e21294fb",
+      "supplement_index": 0,
+      "root_aeo_id": "2785f0a8-078c-c2b4-15e7-798f4abafac2",
+      "supplement_aeo_id": "f860ce85-4cf3-87c5-e58a-d61cec697aad",
+      "EduOrgINN": "0243002225",
+      "EduOrgOGRN": "1020202339475",
+      "certificate_EduOrgFullName": "Муниципальное бюджетное общеобразовательное учреждение средняя общеобразовательная школа с. Нижнебалтачево муниципального района Татышлинский район Республики Башкортостан",
+      "certificate_EduOrgShortName": "МБОУ СОШ с. Нижнебалтачево",
+      "root_ActualEducationOrganization": {
+        "Id": "2785f0a8-078c-c2b4-15e7-798f4abafac2",
+        "FullName": "Муниципальное бюджетное общеобразовательное учреждение средняя общеобразовательная школа с. Нижнебалтачево муниципального района Татышлинский район Республики Башкортостан",
+        "ShortName": "МБОУ СОШ с. Нижнебалтачево",
+        "INN": "0243002225",
+        "OGRN": "1020202339475",
+        "KPP": "024301001",
+        "RegionName": "Республика Башкортостан"
+      },
+      "supplement_ActualEducationOrganization": {
+        "Id": "f860ce85-4cf3-87c5-e58a-d61cec697aad",
+        "FullName": "Филиал Муниципального бюджетного общеобразовательного учреждения средняя общеобразовательная школа с. Нижнебалтачево муниципального района Татышлинский район Республики Башкортостан - начальная общеобразовательная школа имени Менсадыка Гарипова д. Бигинеево муниципального района Татышлинский район Республики Башкортостан",
+        "ShortName": "Филиал МБОУ СОШ с. Нижнебалтачево - НОШ им. М.Гарипова д. Бигинеево",
+        "INN": "0243002225",
+        "OGRN": "1020202339475",
+        "KPP": "024301001"
+      },
+      "supplement_meta": {
+        "StatusName": "Действующее",
+        "Number": "2",
+        "SerialNumber": "0000558",
+        "FormNumber": "02А01"
+      }
+    },
+    {
+      "record_kind": "branch_supplement_diff_aeo_id_v1",
+      "rule_id": "diff_aeo_id",
+      "certificate_id": "0078b23f-1c94-e14e-bd6a-fc4d86cfd616",
+      "supplement_index": 0,
+      "root_aeo_id": "a335e23d-1aec-8c4e-b886-aef01ec3ed21",
+      "supplement_aeo_id": "737ee00f-ca52-38c4-27ea-49d52402f400",
+      "EduOrgINN": "4813001960",
+      "EduOrgOGRN": "1024800689319",
+      "certificate_EduOrgFullName": "Муниципальное бюджетное общеобразовательное учреждение средняя общеобразовательная школа села Кузьминские Отвержки имени Героя Советского Союза Николая Прокофьевича Лапшова Липецкого муниципального округа Липецкой области",
+      "certificate_EduOrgShortName": "МБОУ СОШ с. Кузьминские Отвержки имени Героя Советского Союза Н.П. Лапшова",
+      "root_ActualEducationOrganization": {
+        "Id": "a335e23d-1aec-8c4e-b886-aef01ec3ed21",
+        "FullName": "Муниципальное бюджетное общеобразовательное учреждение средняя общеобразовательная школа села Кузьминские Отвержки имени Героя Советского Союза Николая Прокофьевича Лапшова Липецкого муниципального округа Липецкой области",
+        "ShortName": "МБОУ СОШ с. Кузьминские Отвержки имени Героя Советского Союза Н.П. Лапшова",
+        "INN": "4813001960",
+        "OGRN": "1024800689319",
+        "KPP": "481301001",
+        "RegionName": "Липецкая область"
+      },
+      "supplement_ActualEducationOrganization": {
+        "Id": "737ee00f-ca52-38c4-27ea-49d52402f400",
+        "FullName": "Филиал муниципального бюджетного общеобразовательного учреждения средней общеобразовательной школы села Кузьминские Отвержки имени Героя Советского Союза Николая Прокофьевича Лапшова Липецкого муниципального округа Липецкой области в с. Тюшевка",
+        "ShortName": "Филиал МБОУ СОШ с. Кузьминские Отвержки имени Героя Советского Союза Н.П. Лапшова в с. Тюшевка",
+        "INN": "4813001960",
+        "OGRN": "1024800689319",
+        "KPP": "481343001"
+      },
+      "supplement_meta": {
+        "StatusName": "Действующее",
+        "Number": "2",
+        "SerialNumber": "48А01",
+        "FormNumber": "0000655"
+      }
+    },
+    {
+      "record_kind": "branch_supplement_diff_aeo_id_v1",
+      "rule_id": "diff_aeo_id",
+      "certificate_id": "00797ca0-bcd3-4f20-b586-daa9dc9a270e",
+      "supplement_index": 0,
+      "root_aeo_id": "0b199562-e9a5-76b6-1ed9-334c67204af4",
+      "supplement_aeo_id": "687bb92e-6ea2-fada-a7e0-8f4ade385e5b",
+      "EduOrgINN": "6018008636",
+      "EduOrgOGRN": "1026002343707",
+      "certificate_EduOrgFullName": "Муниципальное бюджетное общеобразовательное учреждение \"Карамышевская средняя общеобразовательная школа Псковского района\"",
+      "certificate_EduOrgShortName": "МБОУ \"Карамышевская средняя общеобразовательная школа\"",
+      "root_ActualEducationOrganization": {
+        "Id": "0b199562-e9a5-76b6-1ed9-334c67204af4",
+        "FullName": "Муниципальное бюджетное общеобразовательное учреждение \"Карамышевская средняя общеобразовательная школа Псковского района\"",
+        "ShortName": "МБОУ \"Карамышевская средняя общеобразовательная школа\"",
+        "INN": "6018008636",
+        "OGRN": "1026002343707",
+        "KPP": "601801001",
+        "RegionName": "Псковская область"
+      },
+      "supplement_ActualEducationOrganization": {
+        "Id": "687bb92e-6ea2-fada-a7e0-8f4ade385e5b",
+        "FullName": "Талецкая основная общеобразовательная школа, филиал муниципального бюджетного общеобразовательного учреждения \"Карамышевская средняя общеобразовательная школа Псковского района\"",
+        "ShortName": "Талецкая основная общеобразовательная школа",
+        "INN": "6018008636",
+        "OGRN": "1026002343707",
+        "KPP": "601801001"
+      },
+      "supplement_meta": {
+        "StatusName": "Действующее",
+        "Number": "3",
+        "SerialNumber": "60А01",
+        "FormNumber": "0000431"
+      }
+    },
+    {
+      "record_kind": "branch_supplement_diff_aeo_id_v1",
+      "rule_id": "diff_aeo_id",
+      "certificate_id": "00797ca0-bcd3-4f20-b586-daa9dc9a270e",
+      "supplement_index": 2,
+      "root_aeo_id": "0b199562-e9a5-76b6-1ed9-334c67204af4",
+      "supplement_aeo_id": "7ab8037c-ea6d-8ffe-cee1-82e883ecd11f",
+      "EduOrgINN": "6018008636",
+      "EduOrgOGRN": "1026002343707",
+      "certificate_EduOrgFullName": "Муниципальное бюджетное общеобразовательное учреждение \"Карамышевская средняя общеобразовательная школа Псковского района\"",
+      "certificate_EduOrgShortName": "МБОУ \"Карамышевская средняя общеобразовательная школа\"",
+      "root_ActualEducationOrganization": {
+        "Id": "0b199562-e9a5-76b6-1ed9-334c67204af4",
+        "FullName": "Муниципальное бюджетное общеобразовательное учреждение \"Карамышевская средняя общеобразовательная школа Псковского района\"",
+        "ShortName": "МБОУ \"Карамышевская средняя общеобразовательная школа\"",
+        "INN": "6018008636",
+        "OGRN": "1026002343707",
+        "KPP": "601801001",
+        "RegionName": "Псковская область"
+      },
+      "supplement_ActualEducationOrganization": {
+        "Id": "7ab8037c-ea6d-8ffe-cee1-82e883ecd11f",
+        "FullName": "Быстрецовская основная общеобразовательная школа, филиал муниципального бюджетного общеобразовательного учреждения\" Карамышевская средняя общеобразовательная школа Псковского района\"",
+        "ShortName": "Быстрецовская основная общеобразовательная школа",
+        "INN": "6018008636",
+        "OGRN": "1026002343707",
+        "KPP": "601801001"
+      },
+      "supplement_meta": {
+        "StatusName": "Действующее",
+        "Number": "2",
+        "SerialNumber": "60А01",
+        "FormNumber": "0000430"
+      }
+    }
+  ]
+}

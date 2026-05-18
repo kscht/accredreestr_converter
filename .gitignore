@@ -14,5 +14,9 @@ examples/jsonl_samples_aeo_mismatch/
 # Выборка «филиал / пустой INN в supplement» из полного JSONL (~МБ; см. tools/extract_branch_supplement_aeo_inn_gap_jsonl.py)
 examples/branch_supplement_aeo_inn_gap.jsonl
 
+# Крупные выборки audit_dataset_branches.py (--branch-jsonl / --problem-jsonl на полном снимке)
+examples/branch_supplements_diff_aeo_id.jsonl
+examples/certificate_lines_with_branch_supplements.jsonl
+
 # Полные строки из audit_dataset_edu_program_levels.py (десятки–сотни МБ на полном снимке)
 examples/certificate_lines_edu_programs_*.jsonl

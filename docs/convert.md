@@ -61,6 +61,10 @@ flowchart TD
 | **`Qualification`** | Строка `"0"` (плейсхолдер) → `null` |
 | Остальные строки | После `clean_text` как есть |
 
+### Наименования организаций (без display v1)
+
+Поля **`EduOrgFullName`**, **`EduOrgShortName`**, **`FullName`**, **`ShortName`** (корень и supplement) попадают в JSONL **как очищенный текст из XML** — без правил display v1 из `org_name_normalize.py` (ОПФ, кавычки, КАПС и т.д.). Типографическая нормализация и черновик словаря — **вне** конвертера: [`docs/tools.md`](tools.md) (OpenRouter, `diff_org_name_dictionaries.py`).
+
 Идентификаторы в отчёте: `INN`, `KPP`, `OGRN`, `EduOrgINN`, `EduOrgKPP`, `EduOrgOGRN`, `IndividualEntrepreneurINN`, `IndividualEntrepreneurEGRIP`.
 
 ### Неизвестные теги
