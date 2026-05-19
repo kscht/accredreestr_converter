@@ -290,6 +290,14 @@ _EDU_LEVEL_SHORT: dict[str, str] = {
 _EDU_LEVEL_HIGHER_PREFIX = re.compile(r"^Высшее образование\s*[-–—]\s*", re.IGNORECASE)
 _EDU_LEVEL_OBRAZOVANIE_SUFFIX = re.compile(r"\s+образование$", re.IGNORECASE)
 
+# Второй сегмент кода программы → подтип ПКВК (ФЗ-273 ст. 69 ч. 5)
+_PKVK_BY_CODE_SEGMENT: dict[str, str] = {
+    "06": "Аспирантура",
+    "07": "Адъюнктура",
+    "08": "Ординатура",
+    "09": "Ассистентура",
+}
+
 _CO_GENITIVE_END = re.compile(
     r"(?:"
     r"(?:^|\s)Республик[иа]\s+(?P<after_resp>\w[\w\-]*)$"
@@ -1541,17 +1549,25 @@ def shorten_region_name(name: str | None) -> str | None:
     return s or name
 
 
-def shorten_edu_level(name: str | None) -> str | None:
+def shorten_edu_level(name: str | None, code: str | None = None) -> str | None:
     """Сократить название уровня образования для узла графа.
 
     Канонические ФЗ-273: НОО, ООО, СОО, СПО, ДО, ДПО, Бакалавриат, Специалитет,
     Магистратура, ПКВК.
     Нестандартные: снять «Высшее образование — » спереди или «образование» сзади.
+    Для ПКВК с кодом программы: второй сегмент кода уточняет подтип
+    (06=Аспирантура, 07=Адъюнктура, 08=Ординатура, 09=Ассистентура).
     """
     if not name:
         return None
     short = _EDU_LEVEL_SHORT.get(name)
     if short:
+        if short == "ПКВК" and code:
+            parts = code.split(".")
+            if len(parts) == 3:
+                pkvk_type = _PKVK_BY_CODE_SEGMENT.get(parts[1])
+                if pkvk_type:
+                    return pkvk_type
         return short
     s = _EDU_LEVEL_HIGHER_PREFIX.sub("", name).strip()
     if s != name:
@@ -1670,7 +1686,7 @@ def _graph_collect_programs(
             entry["ugs_code"] = ugs
         if level:
             entry["edu_level"] = level
-            short = shorten_edu_level(level)
+            short = shorten_edu_level(level, code)
             if short and short != level:
                 entry["edu_level_short"] = short
         programs.append(entry)
