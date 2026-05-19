@@ -35,6 +35,27 @@ python convert.py data/data-*-structure-*.xml \
 
 Короче, если не нужен отдельный шаг со **`download_urls.txt`**: шаги 1–2 можно заменить одной командой **`python download.py --discover -o data/`** (внутри вызывается тот же поиск URL, плюс сразу скачивание).
 
+### Альтернатива: через Docker
+
+Если не хочется настраивать Python-окружение локально, используйте Docker — `data/` и `out/` монтируются с хоста:
+
+```bash
+git clone git@github.com:kscht/accredreestr_converter.git
+cd accredreestr_converter
+
+docker compose build
+
+# Скачать снимок
+docker compose run --rm converter python download.py --discover -o data/
+
+# Конвертировать
+docker compose run --rm converter python convert.py data/data-*-structure-*.xml \
+  --progress-every 50000 --report out/convert_report.json
+
+# Тесты
+docker compose run --rm converter pytest
+```
+
 ## Структура репозитория
 
 - **`specs/`** — машиночитаемые артефакты: маппинги KG/SQL/Prisma, JSON Schema, эталонный XML структуры, `field_labels.json`.
@@ -42,7 +63,7 @@ python convert.py data/data-*-structure-*.xml \
 - **`docs/tools.md`** — обзор скриптов **`tools/`**, аудитов и связь с умолчаниями **`convert.py`**.
 - **`docs/convert.md`** — подробная логика **`convert.py`**: парсинг, срезы, нормализация кодов/ступеней ФЗ-273, дозаполнения, глобальный 2-й проход по программам, отчёт `--report`.
 - **`docs/diagrams/`** — диаграммы (исходники и экспорт).
-- **Корень** — основной CLI (`convert.py`, `download.py`, `scrape_opendata.py`), пакеты `sql_convert/`, `parquet_convert/`, `cypher_convert/`.
+- **Корень** — основной CLI (`convert.py`, `download.py`, `scrape_opendata.py`), пакеты `sql_convert/`, `parquet_convert/`, `cypher_convert/`, `surreal_convert/`; `Dockerfile`, `docker-compose.yml`.
 
 | Путь | Назначение |
 |------|------------|
@@ -81,13 +102,16 @@ python convert.py data/data-*-structure-*.xml \
 | `sql_convert/import_sql.py` | Импорт JSONL в SQLite, PostgreSQL или MySQL (`python -m sql_convert.import_sql …`) |
 | `sql_convert/sql_ddl.py` | DDL из `specs/sql/mapping.json` (в т.ч. диалект DuckDB) |
 | `parquet_convert/import_duckdb.py` | Импорт JSONL в DuckDB и/или выгрузка таблиц в Parquet (`python -m parquet_convert.import_duckdb …`) |
+| `surreal_convert/import_surreal.py` | Импорт JSONL в SurrealDB как граф по `specs/kg/mapping.json` (`python -m surreal_convert.import_surreal …`) |
 | `download.py` | Скачивание XML (в т.ч. `--discover`) |
 | `scrape_opendata.py` | Поиск актуальных URL XML на странице opendata |
 | `specs/xml/data-20160908-structure-20160713.xml` | Эталон структуры полей (схема для неизвестных тегов) |
 | `data/` | Скачанные `.xml` (в git не коммитятся, см. `.gitignore`) |
 | `out/` | Результаты конвертации (`.jsonl`, логи, `--report`) — каталог в git не коммитится |
 | `tests/` | `pytest`, фикстуры в `tests/fixtures/` |
-| `requirements.txt` | `lxml`, `requests`, `httpx`, `pytest`, `jsonschema`, `psycopg[binary]`, `pymysql`, `duckdb` |
+| `requirements.txt` | `lxml`, `requests`, `httpx`, `pytest`, `jsonschema`, `psycopg[binary]`, `pymysql`, `duckdb`, `surrealdb` |
+| `Dockerfile` | Образ Python 3.12 с зависимостями проекта |
+| `docker-compose.yml` | `converter` (основной), `surrealdb` (профиль `surreal`), `postgres` (профиль `sql`) |
 | `AGENTS.md` | Краткий контекст для ИИ / нового чата |
 
 ## Откуда брать данные
@@ -230,6 +254,23 @@ python -m parquet_convert.import_duckdb out/data.jsonl --parquet-dir out/parquet
 
 Подробности — в [`docs/parquet_duckdb.md`](docs/parquet_duckdb.md).
 
+## Импорт в SurrealDB (`surreal_convert`)
+
+JSONL → граф в **SurrealDB** по `specs/kg/mapping.json` (7 видов узлов, 7 видов рёбер). Импорт идемпотентен: рёбра хранятся через `UPSERT` с детерминированным ключом.
+
+```bash
+# Локально (нужен SurrealDB на ws://localhost:8000)
+python -m surreal_convert.import_surreal out/data.jsonl --recreate
+
+# Через Docker: запустить SurrealDB как compose-сервис и импортировать
+docker compose --profile surreal up -d surrealdb
+docker compose run --rm converter \
+  python -m surreal_convert.import_surreal out/data.jsonl \
+  --url ws://surrealdb:8000 --recreate
+```
+
+Опции: `--url` (по умолчанию `ws://localhost:8000`), `--ns` (`accred`), `--db` (`accred`), `--user`, `--password`, `--batch N`, `--limit N`, `--recreate` (удалить таблицы перед загрузкой), `--mapping` (свой путь к `mapping.json`).
+
 ## Обработка «грязных» данных
 
 - Нормализация пробелов и невидимых символов (`clean_text`), `ensure_json_safe` перед `json.dumps`.
@@ -257,6 +298,11 @@ python -m parquet_convert.import_duckdb out/data.jsonl --parquet-dir out/parquet
 
 - [`docs/cypher_export.md`](docs/cypher_export.md);
 - **`python -m cypher_convert.export_cypher`** — JSONL → файл `.cypher`.
+
+Для **SurrealDB** (граф, по тому же KG-mapping):
+
+- [`surreal_convert/import_surreal.py`](surreal_convert/import_surreal.py);
+- **`python -m surreal_convert.import_surreal`** — JSONL → SurrealDB, UPSERT-узлы и рёбра с детерминированным ключом (идемпотентно).
 
 Для **реляционной** загрузки (PostgreSQL и аналоги):
 
@@ -317,4 +363,11 @@ ACCRED_SQL_LIVE_SAMPLE=1 pytest tests/test_import_sql_live_sample.py -q
 
 ```bash
 ACCRED_PARQUET_LIVE_SAMPLE=1 pytest tests/test_import_parquet_live_sample.py -q
+```
+
+Живой импорт в **SurrealDB** (нужен SurrealDB на `ws://localhost:8000`):
+
+```bash
+ACCRED_SURREAL_LIVE=1 pytest tests/test_import_surreal.py -q
+# Свой URL: ACCRED_SURREAL_URL=ws://localhost:8000 ACCRED_SURREAL_LIVE=1 pytest tests/test_import_surreal.py -q
 ```

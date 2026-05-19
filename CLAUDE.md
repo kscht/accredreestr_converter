@@ -9,9 +9,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Команды
 
 ```bash
-# Окружение
+# Окружение (локально)
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+
+# Через Docker (не нужно локальное venv)
+docker compose build
+docker compose run --rm converter python download.py --discover -o data/
+docker compose run --rm converter python convert.py data/data-*-structure-*.xml --progress-every 50000
+docker compose run --rm converter pytest
 
 # Скачать последний снимок XML в data/
 python download.py --discover -o data/
@@ -25,6 +31,7 @@ pytest tests/test_convert.py                         # только основн
 RUN_SLOW=1 pytest -k streaming                       # медленный потоковый тест
 ACCRED_SQL_LIVE_SAMPLE=1 pytest tests/test_import_sql_live_sample.py -q
 ACCRED_PARQUET_LIVE_SAMPLE=1 pytest tests/test_import_parquet_live_sample.py -q
+ACCRED_SURREAL_LIVE=1 pytest tests/test_import_surreal.py -q  # нужен SurrealDB на ws://localhost:8000
 ```
 
 ## Архитектура
@@ -59,6 +66,7 @@ elem_to_dict (парсинг + типизация)
 - **`sql_convert/`** — `import_sql.py` (SQLite/PG/MySQL), `sql_ddl.py` (DDL по mapping).
 - **`parquet_convert/`** — `import_duckdb.py` (DuckDB + Parquet).
 - **`cypher_convert/`** — `export_cypher.py` (Neo4j Cypher по `specs/kg/mapping.json`).
+- **`surreal_convert/`** — `import_surreal.py` (SurrealDB граф по `specs/kg/mapping.json`).
 - **`tests/fixtures/`** — XML-фикстуры для `pytest`.
 - **`data/`**, **`out/`** — не в репозитории (XML-снимки и результаты конвертации).
 
@@ -76,7 +84,7 @@ elem_to_dict (парсинг + типизация)
 
 Три файла описывают **одну** модель данных и должны обновляться согласованно при изменении конвертера:
 - `specs/sql/mapping.json` — таблицы / PK / FK (используется SQL, DuckDB, Parquet, Prisma).
-- `specs/kg/mapping.json` — узлы и рёбра для Knowledge Graph / Cypher.
+- `specs/kg/mapping.json` — узлы и рёбра для Knowledge Graph / Cypher / SurrealDB.
 - `specs/json-schema/certificate-line.schema.json` — JSON Schema 2020-12 для одной строки JSONL.
 
 Призма генерируется: `python tools/generate_prisma_schema.py`.  

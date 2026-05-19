@@ -68,6 +68,9 @@
 | `sql_convert/import_sql.py` | JSONL → SQLite / PostgreSQL / MySQL (`python -m sql_convert.import_sql`) |
 | `sql_convert/sql_ddl.py` | DDL из `specs/sql/mapping.json` (SQLite, PostgreSQL, MySQL, DuckDB) |
 | `parquet_convert/import_duckdb.py` | JSONL → DuckDB / Parquet (`python -m parquet_convert.import_duckdb`) |
+| `surreal_convert/import_surreal.py` | JSONL → SurrealDB граф по `specs/kg/mapping.json` (`python -m surreal_convert.import_surreal`) |
+| `Dockerfile` | Образ Python 3.12 с зависимостями проекта |
+| `docker-compose.yml` | `converter` (основной), `surrealdb` (профиль `surreal`), `postgres` (профиль `sql`) |
 | `download.py` | Скачивание XML, `--discover`, `--save-urls` |
 | `scrape_opendata.py` | Только поиск URL |
 | `tests/test_convert.py` | Основные тесты |
@@ -83,6 +86,7 @@
 | `tests/test_import_sql_live_sample.py` | Опционально: импорт `out/sample_live_5000.jsonl` при **`ACCRED_SQL_LIVE_SAMPLE=1`** |
 | `tests/test_import_parquet_live_sample.py` | Опционально: Parquet с той же выборкой при **`ACCRED_PARQUET_LIVE_SAMPLE=1`** |
 | `tests/test_import_duckdb.py` | Импорт JSONL в DuckDB и Parquet (нужен пакет `duckdb`) |
+| `tests/test_import_surreal.py` | Граф-импорт в SurrealDB (unit-тесты); опц. интеграция при **`ACCRED_SURREAL_LIVE=1`** |
 | `tests/test_kg_mapping.py` | Структура и `format_version` в `specs/kg/mapping.json` |
 | `tests/test_analyze_aeo_cert_vs_supplement.py` | CLI сводки AEO |
 | `tests/test_generate_test_jsonl_samples.py` | Генерация `examples/jsonl_samples/sample_*.jsonl` |
@@ -139,7 +143,7 @@
 
 ## Зависимости
 
-`requirements.txt`: `lxml`, `requests`, **`httpx`** (черновик словаря OpenRouter), `pytest`, **`jsonschema`**, **`psycopg[binary]`** (PostgreSQL), **`pymysql`** (MySQL), **`duckdb`**. В конвертере **нет** `xmltodict`, `pandas`, `pydantic`.
+`requirements.txt`: `lxml`, `requests`, **`httpx`** (черновик словаря OpenRouter), `pytest`, **`jsonschema`**, **`psycopg[binary]`** (PostgreSQL), **`pymysql`** (MySQL), **`duckdb`**, **`surrealdb`**. В конвертере **нет** `xmltodict`, `pandas`, `pydantic`.
 
 ## Тесты
 
@@ -148,6 +152,27 @@ pytest
 # опционально: RUN_SLOW=1 pytest -k streaming
 # опционально: ACCRED_SQL_LIVE_SAMPLE=1 pytest tests/test_import_sql_live_sample.py -q
 # опционально: ACCRED_PARQUET_LIVE_SAMPLE=1 pytest tests/test_import_parquet_live_sample.py -q
+# опционально: ACCRED_SURREAL_LIVE=1 pytest tests/test_import_surreal.py -q  # нужен SurrealDB на ws://localhost:8000
+```
+
+## Docker
+
+Если не нужно локальное Python-окружение, все команды можно запускать через Docker — `data/` и `out/` монтируются с хоста (bind mount, не Docker volume):
+
+```bash
+docker compose build
+docker compose run --rm converter python download.py --discover -o data/
+docker compose run --rm converter python convert.py data/data-*-structure-*.xml --progress-every 50000
+docker compose run --rm converter pytest
+
+# SurrealDB (профиль surreal)
+docker compose --profile surreal up -d surrealdb
+docker compose run --rm converter \
+  python -m surreal_convert.import_surreal out/data.jsonl \
+  --url ws://surrealdb:8000 --recreate
+
+# PostgreSQL (профиль sql)
+docker compose --profile sql up -d postgres
 ```
 
 ## Каталоги и gitignore
