@@ -1,0 +1,20 @@
+services:
+  converter:
+    build: .
+    volumes:
+      - ./data:/app/data
+      - ./out:/app/out
+      - ./examples:/app/examples
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: accred
+      POSTGRES_PASSWORD: accred
+      POSTGRES_DB: accred
+    ports:
+      - "5432:5432"
+    profiles:
+      - sql
