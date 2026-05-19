@@ -252,6 +252,38 @@ _REGION_SHORT_SUFFIX = re.compile(
 # Префикс «Республика X» и «г. X»
 _REGION_SHORT_PREFIX = re.compile(r"^(?:г\.\s*|Республика\s+)", re.IGNORECASE)
 
+# --- Константы для make_control_organ_display --------------------------------
+
+# Порядок важен: более специфичные паттерны — раньше
+_CO_TYPE_MAP: list[tuple[re.Pattern[str], str, bool]] = [
+    (re.compile(r"федеральн\w*\s+служб\w+\s+по\s+надзору\s+в\s+сфере\s+образования", re.I), "Рособрнадзор", False),
+    (re.compile(r"\bрособрнадзор\b", re.I), "Рособрнадзор", False),
+    (re.compile(r"министерство\s+просвещения", re.I), "Минпросвещения", True),
+    (re.compile(r"министерство\s+общего\s+и\s+профессионального", re.I), "Минобр", True),
+    (re.compile(r"министерство\s+образования", re.I), "Минобр", True),
+    (re.compile(r"министерство\s+науки", re.I), "Миннауки", True),
+    (re.compile(r"департамент\s+образования", re.I), "Деп. образования", True),
+    (re.compile(r"комитет\s+по\s+образованию", re.I), "Комитет образования", True),
+    (re.compile(r"управление\s+образования", re.I), "Упр. образования", True),
+]
+
+# Извлечение имени региона из конца строки в родительном падеже:
+#   «Брянской области»      → before_noun="Брянской"
+#   «Республики Татарстан»  → after_resp="Татарстан"
+#   «Чувашской Республики»  → before_noun="Чувашской"
+#   «г. Москвы»             → city="Москвы"
+#   «автономного округа — Югры» (hyphen part stripped, before_noun = adjective before noun)
+_CO_GENITIVE_END = re.compile(
+    r"(?:"
+    r"(?:^|\s)Республик[иа]\s+(?P<after_resp>\w[\w\-]*)$"
+    r"|(?P<before_noun>\w[\w\-]*)\s+(?:автономн(?:ой|ого)\s+)?"
+    r"(?:области|края|автономного\s+округа|округа|района|республики)"
+    r"(?:\s*[—–\-].*)?$"
+    r"|г\.\s*(?P<city>\w[\w\-]*)$"
+    r")",
+    re.IGNORECASE,
+)
+
 
 def _project_root() -> Path:
     return Path(__file__).resolve().parent
@@ -1492,6 +1524,42 @@ def shorten_region_name(name: str | None) -> str | None:
     return s or name
 
 
+def _co_extract_region(text: str) -> str | None:
+    """Извлечь короткое имя региона из конца строки контролирующего органа."""
+    m = _CO_GENITIVE_END.search(text)
+    if not m:
+        return None
+    return m.group("after_resp") or m.group("before_noun") or m.group("city")
+
+
+def make_control_organ_display(name: str | None) -> str | None:
+    """Сократить название контролирующего органа для узла графа.
+
+    Примеры::
+
+        «Министерство образования и науки Брянской области»
+            → «Минобр Брянской»
+        «Министерство образования и молодёжной политики Республики Татарстан»
+            → «Минобр Татарстан»
+        «Департамент образования и молодежной политики Ярославской области»
+            → «Деп. образования Ярославской»
+        «Комитет по образованию г. Санкт-Петербурга»
+            → «Комитет образования Санкт-Петербурга»
+        «Федеральная служба по надзору в сфере образования и науки»
+            → «Рособрнадзор»
+    """
+    if not name:
+        return None
+    s = name.strip()
+    for pattern, short_type, is_regional in _CO_TYPE_MAP:
+        if pattern.search(s):
+            if not is_regional:
+                return short_type
+            region = _co_extract_region(s)
+            return f"{short_type} {region}" if region else short_type
+    return s[:40]
+
+
 def _derive_founder(
     is_federal: bool | None,
     form_name: str | None,
@@ -1656,6 +1724,7 @@ def build_graph_projection(record: dict[str, Any]) -> dict[str, Any]:
     )
 
     control_organ = record.get("ControlOrgan") or None
+    control_organ_short = make_control_organ_display(control_organ) if control_organ else None
     region_short = shorten_region_name(region)
 
     org: dict[str, Any] = {}
@@ -1677,6 +1746,8 @@ def build_graph_projection(record: dict[str, Any]) -> dict[str, Any]:
             proj["region_short"] = region_short
     if control_organ:
         proj["control_organ"] = control_organ
+        if control_organ_short and control_organ_short != control_organ:
+            proj["control_organ_short"] = control_organ_short
     if head_levels:
         proj["edu_levels"] = head_levels
     if head_programs:
