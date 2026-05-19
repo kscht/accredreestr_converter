@@ -1631,6 +1631,8 @@ def build_graph_projection(record: dict[str, Any]) -> dict[str, Any]:
         edu_levels=set(head_levels),
     )
 
+    control_organ = record.get("ControlOrgan") or None
+
     org: dict[str, Any] = {}
     if ogrn:
         org["ogrn"] = ogrn
@@ -1640,6 +1642,8 @@ def build_graph_projection(record: dict[str, Any]) -> dict[str, Any]:
         org["display_name"] = display_name
     org["founder_key"] = founder["key"]
     org["founder_label"] = founder["label"]
+    if control_organ:
+        org["control_organ"] = control_organ
 
     proj: dict[str, Any] = {}
     if org:
