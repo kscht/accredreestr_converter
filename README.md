@@ -6,26 +6,24 @@
 
 ## Быстрый старт
 
-От нуля до JSONL (Linux / macOS; в **Windows** вместо `source` выполните `.venv\Scripts\activate`):
+### Локально (Linux / macOS)
+
+В **Windows** вместо `source` выполните `.venv\Scripts\activate`.
 
 ```bash
 git clone git@github.com:kscht/accredreestr_converter.git
 cd accredreestr_converter
 
-python3 -m venv .venv
-source .venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
-# 1) Скрапер: записать URL последней выгрузки (data-YYYYMMDD-…) в download_urls.txt
-python scrape_opendata.py -o download_urls.txt
+# Скачать последний снимок XML в data/
+python download.py --discover -o data/
 
-# 2) Скачать XML в data/ по списку из файла
-python download.py -o data/
-
-# 3) Конвертация → out/<имя-xml>.jsonl (файл большой: десятки минут и сотни MB)
-#    По умолчанию: без «срезанных» статусов на корне (Недействующее, Прекращено, Лишен аккредитации) и без приложений Supplements с этими StatusName; без псевдорегиона «за пределами РФ»; компактный JSON (без null и пустых []/{});
-#    строки без валидного EduOrgOGRN включаются.
-#    Полный снимок как в XML: --include-inactive --include-outside-rf-region --include-null-keys. Доп. срез: --omit-invalid-eduorg-ogrn
+# Конвертация → out/<имя-xml>.jsonl
+# По умолчанию: без «Недействующее/Прекращено/Лишен» на корне и в Supplements,
+# без псевдорегиона «за пределами РФ», компактный JSON (без null и пустых []/{})).
+# Полный снимок: --include-inactive --include-outside-rf-region --include-null-keys
 mkdir -p out
 python convert.py data/data-*-structure-*.xml \
   --progress-every 50000 \
@@ -33,11 +31,9 @@ python convert.py data/data-*-structure-*.xml \
   --log-file out/convert.log
 ```
 
-Короче, если не нужен отдельный шаг со **`download_urls.txt`**: шаги 1–2 можно заменить одной командой **`python download.py --discover -o data/`** (внутри вызывается тот же поиск URL, плюс сразу скачивание).
+### Через Docker
 
-### Альтернатива: через Docker
-
-Если не хочется настраивать Python-окружение локально, используйте Docker — `data/` и `out/` монтируются с хоста:
+Если не нужно настраивать Python-окружение — `data/` и `out/` монтируются с хоста:
 
 ```bash
 git clone git@github.com:kscht/accredreestr_converter.git
@@ -45,14 +41,9 @@ cd accredreestr_converter
 
 docker compose build
 
-# Скачать снимок
 docker compose run --rm converter python download.py --discover -o data/
-
-# Конвертировать
 docker compose run --rm converter python convert.py data/data-*-structure-*.xml \
   --progress-every 50000 --report out/convert_report.json
-
-# Тесты
 docker compose run --rm converter pytest
 ```
 
