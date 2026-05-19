@@ -17,8 +17,11 @@ cd accredreestr_converter
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
-# Скачать последний снимок XML в data/
-python download.py --discover -o data/
+# Найти URL последней выгрузки и сохранить в download_urls.txt (gitignored)
+python scrape_opendata.py -o download_urls.txt
+
+# Скачать XML в data/  (читает download_urls.txt по умолчанию)
+python download.py -o data/
 
 # Конвертация → out/<имя-xml>.jsonl
 # По умолчанию: без «Недействующее/Прекращено/Лишен» на корне и в Supplements,
@@ -41,7 +44,10 @@ cd accredreestr_converter
 
 docker compose build
 
-docker compose run --rm converter python download.py --discover -o data/
+# Найти URL и скачать XML — оба шага в одном контейнере, download_urls.txt в data/
+docker compose run --rm converter sh -c \
+  "python scrape_opendata.py -o data/download_urls.txt && python download.py -c data/download_urls.txt -o data/"
+
 docker compose run --rm converter python convert.py data/data-*-structure-*.xml \
   --progress-every 50000 --report out/convert_report.json
 docker compose run --rm converter pytest
