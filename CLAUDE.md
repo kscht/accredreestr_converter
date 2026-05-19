@@ -97,6 +97,6 @@ ER-диаграмма: `python tools/generate_sql_er_diagram.py`.
 - **Компактный JSON по умолчанию**: ключи с `null`, пустыми `{}` и `[]` не пишутся. `--include-null-keys` возвращает полный набор полей.
 - **`EduLevelName`** в `specs/edu_level_names_fz273_map.json`: в `entries` — только отличия от канона и `null`-цели; строка из `canonical_edu_level_names_fz273` без своей записи в `entries` — неявный identity.
 - Имя исходного XML-файла **не попадает** в строку JSONL. Провенанс снимка добавляется вне конвертера.
-- `org_name_normalize.py` — вспомогательный модуль для черновика словаря наименований; **не** вызывается из `convert.py`.
+- `tools/org_name_normalize.py` — вспомогательный модуль для черновика словаря наименований; **не** вызывается из `convert.py`.
 - `tools/draft_org_name_dictionary_openrouter.py` требует переменной `OPENROUTER_API_KEY` (см. `.env.example`).
 - Тесты на живой выборке (`test_import_sql_live_sample.py`, `test_import_parquet_live_sample.py`) требуют файла `out/sample_live_5000.jsonl` и соответствующих env-переменных.

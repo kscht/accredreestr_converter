@@ -1,5 +1,6 @@
 data/*.xml
 out/
+download_urls.txt
 .pytest_cache/
 __pycache__/
 .venv/

@@ -73,7 +73,7 @@ _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from org_name_normalize import (  # noqa: E402
+from tools.org_name_normalize import (  # noqa: E402
     iter_organization_name_fields,
     mask_organization_name_enumeration_numbers_v1,
 )

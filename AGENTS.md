@@ -52,13 +52,14 @@
 | `tools/extract_branch_supplement_aeo_inn_gap_jsonl.py` | JSONL выборки supplement AEO: **`Id` ≠ корня**, пустой **INN**, донор как в `convert`; объекты `branch_supplement_aeo_inn_gap_v1`; **`--limit N`**; пример карточек `examples/branch_supplement_aeo_inn_gap_sample.jsonl`; полный `examples/branch_supplement_aeo_inn_gap.jsonl` — в `.gitignore` |
 | `tools/audit_branch_supplement_aeo_inn_gap.py` | Аудит выборки из `extract_branch_supplement_aeo_inn_gap_jsonl`; по умолчанию `examples/dataset_branch_supplement_aeo_inn_gap_audit.json` |
 | `tools/scan_jsonl_placeholder_scalars.py` | Потоковый подсчёт скалярных «плейсхолдеров» в JSONL (нули, тире, маркеры «нет данных» и т.п.) по JSON-путям; см. `--help` |
-| `org_name_normalize.py` | В корне: вспомогательный модуль для **черновика** словаря имён (итерация шести полей **`iter_organization_name_fields`**, маска **`№`** для промптов и др.). **Не** вызывается из **`convert.py`**. |
+| `tools/org_name_normalize.py` | Вспомогательный модуль для **черновика** словаря имён (итерация шести полей **`iter_organization_name_fields`**, маска **`№`** для промптов и др.). **Не** вызывается из **`convert.py`**. |
 | `tools/draft_org_name_dictionary_openrouter.py` | Черновик словаря наименований через **OpenRouter** (формат v2: **`by_model`**, опции **`--second-model`**, **`--merge-output`**, выборки **`--full-unique-sample`** / **`--limit`**); ключ **`OPENROUTER_API_KEY`** (см. **`.env.example`**). Нужен пакет **`httpx`**. |
 | `tools/diff_org_name_dictionaries.py` | Сравнение JSON черновиков по **`raw`**; два файла или один v2 — флаги **`--model-a`**, **`--model-b`**, **`--model-c`**. Подробнее — **`docs/tools.md`**. |
 | `tools/audit_dataset_branches.py` | Supplement-филиалы: **`ActualEducationOrganization.Id`** в приложении ≠ **`Id`** корневой AEO (как ветка «филиал по Id» в **`convert.py`**); по умолчанию **`examples/dataset_branches_audit.json`**; опц. **`--branch-jsonl`**, **`--problem-jsonl`**. |
 | `docs/tools.md` | Обзор **`tools/`**, аудиты, выборки; умолчания **`convert.py`** |
 | `docs/convert.md` | Подробная логика **`convert.py`**: пайплайн, срезы, нормализация, дозаполнения, 2-й проход |
 | `docs/cypher_export.md` | JSONL → Cypher (Neo4j) по `specs/kg/mapping.json` |
+| `docs/surreal_convert.md` | JSONL → SurrealDB граф: схема, семантика, примеры SurrealQL |
 | `examples/accred_graph_preview.cypher` | Мини-пример графа (1 сертификат) для Neo4j Browser |
 | `cypher_convert/export_cypher.py` | CLI: `python -m cypher_convert.export_cypher …` |
 | `docs/sql_convert.md` | Пояснения к SQL-импорту |

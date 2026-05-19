@@ -89,7 +89,7 @@ docker compose run --rm converter pytest
 | `tools/audit_dataset_status.py` | Гистограммы корневых **`StatusName`** и **`TypeName`** → `examples/dataset_status_audit.json` |
 | `tools/audit_dataset_region.py` | Гистограмма **`RegionName`**, счётчик псевдорегиона «за пределами РФ» → `examples/dataset_region_audit.json` |
 | `tools/scan_jsonl_placeholder_scalars.py` | Подсчёт скалярных плейсхолдеров в JSONL по путям (нули, тире, «н/д» и т.п.); см. `--help` |
-| `org_name_normalize.py` | Вспомогательные функции для черновика словаря имён (**вне** конвертера); см. **`docs/tools.md`** |
+| `tools/org_name_normalize.py` | Вспомогательные функции для черновика словаря имён (**вне** конвертера); см. **`docs/tools.md`** |
 | `tools/draft_org_name_dictionary_openrouter.py` | Черновик словаря через OpenRouter (**`httpx`**, **`OPENROUTER_API_KEY`**); см. **`.env.example`** и **`docs/tools.md`** |
 | `tools/diff_org_name_dictionaries.py` | Сравнение JSON черновиков (в т.ч. две модели в одном файле v2) |
 | `tools/audit_dataset_branches.py` | Аудит supplement-филиалов (AEO Id ≠ корня) → `examples/dataset_branches_audit.json` |
@@ -301,6 +301,7 @@ docker compose run --rm converter \
 
 Для **SurrealDB** (граф, по тому же KG-mapping):
 
+- [`docs/surreal_convert.md`](docs/surreal_convert.md);
 - [`surreal_convert/import_surreal.py`](surreal_convert/import_surreal.py);
 - **`python -m surreal_convert.import_surreal`** — JSONL → SurrealDB, UPSERT-узлы и рёбра с детерминированным ключом (идемпотентно).
 

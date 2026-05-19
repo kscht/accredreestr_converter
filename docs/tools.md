@@ -101,7 +101,7 @@ python3 tools/generate_test_jsonl_samples.py "$J"
 
 | Скрипт / файл | Назначение |
 |---------------|------------|
-| **`org_name_normalize.py`** (корень репозитория) | Вспомогательные функции для черновика: итерация шести полей **`iter_organization_name_fields`**, маски **`№`** для промптов и т.п. **Не** импортируется конвертером. |
+| **`tools/org_name_normalize.py`** | Вспомогательные функции для черновика: итерация шести полей **`iter_organization_name_fields`**, маски **`№`** для промптов и т.п. **Не** импортируется конвертером. |
 | **`draft_org_name_dictionary_openrouter.py`** | Запросы к OpenRouter (`httpx`): формат черновика **v2** с **`by_model`**, **`--merge-output`**, **`--second-model`**, выборки **`--full-unique-sample`** / **`--limit`**. Ключ **`OPENROUTER_API_KEY`** — см. **`.env.example`**. |
 | **`diff_org_name_dictionaries.py`** | Сравнение черновиков по **`raw`**. Для одного merged-файла v2 — **`--model-a`** / **`--model-b`** (опц. **`--model-c`**). |
 | **`audit_dataset_branches.py`** | Supplement-филиалы: **`ActualEducationOrganization.Id`** в приложении ≠ **`Id`** корневой AEO. Выход по умолчанию: **`examples/dataset_branches_audit.json`**. |
