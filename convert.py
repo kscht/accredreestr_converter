@@ -204,6 +204,45 @@ _TIME_FRACTIONAL = re.compile(r"(\d{2}:\d{2}(?::\d{2})?)\.\d+")
 # Коды «XX.XX.XX» (ProgrammCode, UGSCode): в старых выгрузках шесть цифр подряд, напр. «090000»
 _TRIPLET_CODE_DOTTED = re.compile(r"^\d{2}\.\d{2}\.\d{2}$")
 
+# --- Константы для build_graph_projection -------------------------------------
+
+# Уровни высшего образования по ФЗ-273 (для вывода учредителя)
+_GRAPH_HIGHER_EDU_LEVELS: Final[frozenset[str]] = frozenset(
+    {
+        "Высшее образование - бакалавриат",
+        "Высшее образование - специалитет",
+        "Высшее образование - магистратура",
+        "Высшее образование - подготовка кадров высшей квалификации",
+    }
+)
+
+# Аббревиатурные префиксы в ShortName (МБОУ, ФГБОУ ВО и т.п.) — срезаются перед проверкой длины
+_GRAPH_ABBREV_PREFIX = re.compile(
+    r"^("
+    r"ФГБОУ|ФГАОУ|ФГКОУ|ФГБНУ|ФГАНУ|ФГБУК|ФГАУК"
+    r"|ГБОУ|ГАОУ|ГКОУ|ГБНУ|ГАПОУ|ГБПОУ|ГКПОУ"
+    r"|МБОУ|МАОУ|МОУ|МКОУ|МБДОУ|МАДОУ|МКДОУ"
+    r"|АНО|ЧОУ|НОУ|ЧУ"
+    r")\s+(ВО|СПО|ДПО|ВПО|ПО|ООП|ДО)?\s*",
+    re.IGNORECASE,
+)
+
+# Полные бюрократические обёртки в FullName/ShortName («ФГБОУ ВО», «Муниципальное бюджетное ОУ» и т.п.)
+_GRAPH_WRAPPER = re.compile(
+    r"^(?:"
+    r"(?:федеральное|государственное|муниципальное|частное|автономная некоммерческая|некоммерческое)"
+    r"\s+(?:государственное\s+)?"
+    r"(?:бюджетное|автономное|казённое|казенное|частное)\s+"
+    r"(?:профессиональное\s+|общеобразовательное\s+|дошкольное\s+)?"
+    r"(?:образовательное\s+)?"
+    r"(?:учреждение|организация)"
+    r"(?:\s+\S+\s+(?:области|края|республики|округа|района|города|муниципального\s+\S+))?"
+    r")\s*",
+    re.IGNORECASE,
+)
+
+_GRAPH_QUOTED = re.compile(r"«([^«»]+)»")  # innermost: no nested « or » in content
+
 
 def _project_root() -> Path:
     return Path(__file__).resolve().parent
@@ -1054,6 +1093,8 @@ def backfill_edulevel_name_from_programm_code_neighbors_jsonl(
                         continue
                     _set_derived(pr, "EduLevelName", code_to_level[code])
                     filled += 1
+                # Пересчитать _graph с учётом обновлённых EduLevelName
+                row["_graph"] = build_graph_projection(row)
                 safe = ensure_json_safe(row)
                 if omit_null_keys:
                     safe = omit_empty_json_values(safe)
@@ -1388,6 +1429,240 @@ def annotate_derived_fields(record: dict[str, Any]) -> None:
     record.setdefault("_derived", {})["HasBranchSupplements"] = has_branch
 
 
+# ---- Функции построения _graph -----------------------------------------------
+
+
+def make_display_name(full_name: str | None, short_name: str | None) -> str | None:
+    """Короткое отображаемое имя организации для узла графа.
+
+    Стратегия (первый успешный вариант ≤ 60/80 символов):
+
+    1. ShortName: снять аббревиатурный префикс (МБОУ, ФГБОУ ВО…),
+       затем извлечь последний фрагмент «…» или использовать результат напрямую.
+    2. FullName: последний фрагмент из «…».
+    3. FullName: срезать бюрократическую обёртку.
+    4. Фолбэк: первые 60 символов FullName.
+    """
+    if short_name:
+        s = _GRAPH_ABBREV_PREFIX.sub("", short_name.strip()).strip()
+        q = _GRAPH_QUOTED.findall(s)
+        s_clean = q[-1].strip() if q else s.strip("«»").strip()
+        if s_clean and len(s_clean) <= 60:
+            return s_clean
+
+    if not full_name:
+        return (short_name or "").strip()[:60] or None
+
+    fn = full_name.strip()
+
+    matches = _GRAPH_QUOTED.findall(fn)
+    if matches:
+        candidate = matches[-1].strip()
+        if 3 <= len(candidate) <= 80:
+            return candidate
+
+    clean = _GRAPH_WRAPPER.sub("", fn).strip().strip("«»").strip()
+    if clean and clean != fn:
+        return clean[:80]
+
+    return fn[:60]
+
+
+def _derive_founder(
+    is_federal: bool | None,
+    form_name: str | None,
+    region_name: str | None,
+    edu_levels: set[str],
+) -> dict[str, str]:
+    """Вывести учредителя из полей датасета (прямого поля в XML нет).
+
+    Возвращает ``{"key": ..., "label": ...}``.
+    ``key`` используется как синтетический идентификатор узла-учредителя в графе.
+
+    Правила:
+    - ``IsFederal=True`` + уровни ВО → Минобрнауки.
+    - ``IsFederal=True`` без ВО → Минпросвещения.
+    - ``FormName`` ∋ «муниципальное» → муниципальный учредитель региона.
+    - ``FormName`` ∋ «государственное» + не федеральное → субъект РФ.
+    - Частные формы → единый узел «private».
+    """
+    form = (form_name or "").lower()
+    region = region_name or "неизвестный регион"
+
+    if is_federal:
+        if edu_levels & _GRAPH_HIGHER_EDU_LEVELS:
+            return {"key": "federal:nauka", "label": "Минобрнауки России"}
+        return {"key": "federal:prosv", "label": "Минпросвещения России"}
+
+    if "муниципальное" in form:
+        return {"key": f"municipal:{region}", "label": f"Муниципальный, {region}"}
+    if "государственное" in form:
+        return {"key": f"regional:{region}", "label": f"Субъект РФ, {region}"}
+    if any(x in form for x in ("частное", "автономная некоммерческая", "некоммерческое партнёрство")):
+        return {"key": "private", "label": "Частный учредитель"}
+
+    return {"key": "unknown", "label": "Учредитель неизвестен"}
+
+
+def _graph_collect_programs(
+    supplement: dict[str, Any],
+) -> tuple[list[str], list[dict[str, str]]]:
+    """Собрать уникальные edu_levels и programs (с кодами) из одного supplement."""
+    edu_levels: list[str] = []
+    programs: list[dict[str, str]] = []
+    seen_level: set[str] = set()
+    seen_code_level: set[tuple[str, str]] = set()
+
+    for prog in supplement.get("EducationalPrograms") or []:
+        if not isinstance(prog, dict):
+            continue
+        level = _get_effective(prog, "EduLevelName") or ""
+        if level and level not in seen_level:
+            seen_level.add(level)
+            edu_levels.append(level)
+
+        code = prog.get("ProgrammCode")
+        if not code or not _PROGRAMM_CODE_TRIPLET_KEY.match(code):
+            continue
+        key = (code, level)
+        if key in seen_code_level:
+            continue
+        seen_code_level.add(key)
+
+        # UGSCode из поля или выведен из первых двух цифр ProgrammCode
+        ugs = prog.get("UGSCode")
+        if not ugs or not _PROGRAMM_CODE_TRIPLET_KEY.match(ugs):
+            parts = code.split(".")
+            ugs = f"{parts[0]}.00.00" if len(parts) == 3 else None
+
+        entry: dict[str, str] = {"code": code}
+        if ugs:
+            entry["ugs_code"] = ugs
+        if level:
+            entry["edu_level"] = level
+        programs.append(entry)
+
+    return edu_levels, programs
+
+
+def build_graph_projection(record: dict[str, Any]) -> dict[str, Any]:
+    """Материализовать проекцию ``_graph`` для построения графа.
+
+    Вызывать после ``annotate_derived_fields`` — когда все ``_derived`` поля выставлены.
+    При использовании второго прохода (backfill EduLevelName по соседям) нужно вызвать
+    повторно после обновления ``_derived.EduLevelName`` в программах.
+
+    Структура результата::
+
+        {
+          "org": {"ogrn", "inn", "display_name", "founder_key", "founder_label"},
+          "region": str,
+          "edu_levels": [str, ...],          # уникальные уровни основной org
+          "programs": [{"code", "ugs_code", "edu_level"}, ...],
+          "branches": [                       # supplements с IsBranchSupplement=true,
+            {"ogrn", "inn", "display_name",  #   сгруппированные по effective OGRN
+             "edu_levels", "programs"}, ...]
+        }
+
+    Пустые списки и None-значения не включаются.
+    """
+    aeo = record.get("ActualEducationOrganization") or {}
+
+    ogrn = _get_effective(record, "EduOrgOGRN")
+    inn = _get_effective(record, "EduOrgINN")
+    full_name = aeo.get("FullName") or record.get("EduOrgFullName")
+    short_name = aeo.get("ShortName") or record.get("EduOrgShortName")
+    display_name = make_display_name(full_name, short_name)
+    region = record.get("RegionName")
+
+    head_levels: list[str] = []
+    head_programs: list[dict[str, str]] = []
+    seen_level: set[str] = set()
+    seen_code_level: set[tuple[str, str]] = set()
+    branch_map: dict[Any, dict[str, Any]] = {}
+
+    for sup in record.get("Supplements") or []:
+        if not isinstance(sup, dict):
+            continue
+        is_branch = bool((sup.get("_derived") or {}).get("IsBranchSupplement"))
+        sup_levels, sup_programs = _graph_collect_programs(sup)
+
+        if not is_branch:
+            for lvl in sup_levels:
+                if lvl not in seen_level:
+                    seen_level.add(lvl)
+                    head_levels.append(lvl)
+            for p in sup_programs:
+                k = (p["code"], p.get("edu_level", ""))
+                if k not in seen_code_level:
+                    seen_code_level.add(k)
+                    head_programs.append(p)
+        else:
+            sup_aeo = sup.get("ActualEducationOrganization") or {}
+            b_ogrn = _get_effective(sup_aeo, "OGRN")
+            b_key = b_ogrn or sup_aeo.get("Id") or id(sup)
+            if b_key not in branch_map:
+                branch_map[b_key] = {
+                    "ogrn": b_ogrn,
+                    "inn": _get_effective(sup_aeo, "INN"),
+                    "display_name": make_display_name(
+                        sup_aeo.get("FullName"), sup_aeo.get("ShortName")
+                    ),
+                    "_seen_level": set(),
+                    "_seen_code_level": set(),
+                    "edu_levels": [],
+                    "programs": [],
+                }
+            b = branch_map[b_key]
+            for lvl in sup_levels:
+                if lvl not in b["_seen_level"]:
+                    b["_seen_level"].add(lvl)
+                    b["edu_levels"].append(lvl)
+            for p in sup_programs:
+                k = (p["code"], p.get("edu_level", ""))
+                if k not in b["_seen_code_level"]:
+                    b["_seen_code_level"].add(k)
+                    b["programs"].append(p)
+
+    founder = _derive_founder(
+        is_federal=record.get("IsFederal"),
+        form_name=aeo.get("FormName"),
+        region_name=region,
+        edu_levels=set(head_levels),
+    )
+
+    org: dict[str, Any] = {}
+    if ogrn:
+        org["ogrn"] = ogrn
+    if inn:
+        org["inn"] = inn
+    if display_name:
+        org["display_name"] = display_name
+    org["founder_key"] = founder["key"]
+    org["founder_label"] = founder["label"]
+
+    proj: dict[str, Any] = {}
+    if org:
+        proj["org"] = org
+    if region:
+        proj["region"] = region
+    if head_levels:
+        proj["edu_levels"] = head_levels
+    if head_programs:
+        proj["programs"] = head_programs
+
+    if branch_map:
+        branches = []
+        for b in branch_map.values():
+            b_clean = {k: v for k, v in b.items() if not k.startswith("_") and v is not None and v != []}
+            if b_clean:
+                branches.append(b_clean)
+        if branches:
+            proj["branches"] = branches
+
+    return proj
+
+
 def convert_one(
     input_path: Path,
     out_fh,
@@ -1473,6 +1748,7 @@ def convert_one(
                 elif _certificate_id_omitted_by_jsonl_blocklist(record):
                     stats.per_file[base]["omitted_certificate_personal_blocklist"] += 1
                 else:
+                    record["_graph"] = build_graph_projection(record)
                     safe = ensure_json_safe(record)
                     if omit_null_keys:
                         safe = omit_empty_json_values(safe)
