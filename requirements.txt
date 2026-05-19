@@ -6,3 +6,4 @@ jsonschema>=4.20
 psycopg[binary]>=3.2
 pymysql>=1.1
 duckdb>=1.0
+surrealdb>=2.0

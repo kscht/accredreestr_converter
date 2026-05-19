@@ -8,6 +8,16 @@ services:
     environment:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
 
+  surrealdb:
+    image: surrealdb/surrealdb:latest
+    command: start --log info --user root --pass root file:///data/accred.surreal
+    volumes:
+      - ./data:/data
+    ports:
+      - "8000:8000"
+    profiles:
+      - surreal
+
   postgres:
     image: postgres:16-alpine
     environment:
