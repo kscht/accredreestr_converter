@@ -7,9 +7,12 @@ CLI читает **JSONL** (выход **`convert.py`**) и импортируе
 Из корня репозитория (с активированным venv):
 
 ```bash
-# Локально — нужен SurrealDB на ws://localhost:8000
+# Локально — нужен SurrealDB на http://localhost:8000
 python -m surreal_convert.import_surreal out/data.jsonl --recreate
 python -m surreal_convert.import_surreal out/data.jsonl --limit 100 --recreate
+
+# Тонкая настройка скорости (больше батч + больше воркеров)
+python -m surreal_convert.import_surreal out/data.jsonl --recreate --batch 1000 --workers 8
 ```
 
 Через Docker Compose (`surrealdb` запускается с профилем `surreal`):
@@ -18,24 +21,33 @@ python -m surreal_convert.import_surreal out/data.jsonl --limit 100 --recreate
 docker compose --profile surreal up -d surrealdb
 docker compose run --rm converter \
   python -m surreal_convert.import_surreal out/data.jsonl \
-  --url ws://surrealdb:8000 --recreate
+  --url http://surrealdb:8000 --recreate
 ```
 
 Основные опции:
 
 | Опция | По умолчанию | Описание |
 |-------|-------------|----------|
-| `--url` | `ws://localhost:8000` | WebSocket URL SurrealDB |
+| `--url` | `http://localhost:8000` | HTTP(S) или WS(S) URL SurrealDB (`ws://` конвертируется в `http://`) |
 | `--ns` | `accred` | Namespace |
 | `--db` | `accred` | Database |
 | `--user` | `root` | Имя пользователя |
 | `--password` | `root` | Пароль |
-| `--batch N` | `50` | Размер батча (сертификатов за один `query`) |
+| `--batch N` | `500` | Сертификатов на один HTTP-запрос |
+| `--workers N` | `4` | Параллельных HTTP-запросов |
 | `--limit N` | — | Не более N строк JSONL |
-| `--recreate` | — | `REMOVE TABLE IF EXISTS` для всех таблиц перед импортом |
+| `--recreate` | — | `REMOVE TABLE IF EXISTS` + CREATE вместо UPSERT (быстрее) |
 | `--mapping` | `specs/kg/mapping.json` | Свой путь к KG-mapping |
 
 Полный список: `python -m surreal_convert.import_surreal --help`.
+
+## Производительность
+
+Транспорт — **httpx async HTTP POST `/sql`** (параллельные батчи). При `--recreate`:
+- используется **CREATE** вместо UPSERT — нет проверки существования записи, заметно быстрее;
+- рекомендованный режим при полной пересборке базы (граф очищается перед каждым импортом).
+
+Без `--recreate` используется UPSERT — поведение идемпотентно (повторный прогон обновляет значения).
 
 ## Схема графа
 
