@@ -43,15 +43,29 @@ ACCRED_SURREAL_LIVE=1 pytest tests/test_import_surreal.py -q  # нужен Surre
 ```
 elem_to_dict (парсинг + типизация)
   → strip_supplements_by_excluded_status
-  → fill_aeo_coherent_inn_ogrn  (INN/OGRN/KPP в AEO и EduOrg* — по умолчанию)
-  → fill_edulevel_from_programm_name
+  → fill_aeo_coherent_inn_ogrn  (INN/OGRN/KPP → _derived, по умолчанию)
+  → fill_edulevel_from_programm_name  (EduLevelName → _derived)
   → strip_degenerate_educational_program_stubs
-  → normalize_edulevel_fz273
+  → normalize_edulevel_fz273  (нормализованный EduLevelName → _derived)
+  → annotate_derived_fields  (IsBranchSupplement, HasBranchSupplements → _derived)
   → фильтры (inactive / outside-rf / invalid-ogrn / blocklist)
   → ensure_json_safe + omit_empty_json_values
   → запись строки JSONL
-После закрытия XML → 2-й проход: backfill_edulevel_name_from_programm_code_neighbors_jsonl (перезаписывает файл)
+После закрытия XML → 2-й проход: backfill_edulevel_name_from_programm_code_neighbors_jsonl (EduLevelName → _derived, перезаписывает файл)
 ```
+
+### Структура `_derived`
+
+Все вычисленные/дозаполненные поля хранятся в ключе `_derived` на соответствующем уровне вложенности — **оригинальные XML-поля не мутируются**. Наличие поля в `_derived` означает, что в оригинальном датасете оно отсутствовало или было нестандартным.
+
+| Уровень | `_derived`-поля | Причина |
+|---------|-----------------|---------|
+| `Certificate` | `HasBranchSupplements`, `EduOrgINN`, `EduOrgOGRN` | вычислен / отсутствовал в XML |
+| `Supplement` | `IsBranchSupplement` | вычислен |
+| `ActualEducationOrganization` | `INN`, `OGRN`, `KPP` | отсутствовали в карточке АО |
+| `EducationalProgram` | `EduLevelName` | пустой или нестандартный уровень в XML |
+
+Хелперы: `_set_derived(obj, key, value)` и `_get_effective(obj, key)` (читает сначала `_derived`, затем оригинал — используется внутри цепочки fill-функций).
 
 ### Ключевые константы в `convert.py`
 
@@ -69,6 +83,7 @@ elem_to_dict (парсинг + типизация)
 - **`parquet_convert/`** — `import_duckdb.py` (DuckDB + Parquet).
 - **`cypher_convert/`** — `export_cypher.py` (Neo4j Cypher по `specs/kg/mapping.json`).
 - **`surreal_convert/`** — `import_surreal.py` (SurrealDB граф по `specs/kg/mapping.json`).
+- **`viewer/`** — граф-вьювер: `api/` (FastAPI, SurrealDB backend), `web/` (React + Cytoscape.js).
 - **`tests/fixtures/`** — XML-фикстуры для `pytest`.
 - **`data/`**, **`out/`** — не в репозитории (XML-снимки и результаты конвертации).
 
@@ -95,10 +110,26 @@ ER-диаграмма: `python tools/generate_sql_er_diagram.py`.
 
 ## Важные особенности
 
+- **`_derived` vs оригинал**: все вычисляемые поля пишутся только в `_derived`; XML-поля остаются нетронутыми. Внутри цепочки fill-функций используйте `_get_effective(obj, key)` — читает `_derived` с приоритетом над оригиналом.
 - **Второй проход** (`backfill_edulevel_name_from_programm_code_neighbors_jsonl`) пишет временный файл и **заменяет** выходной JSONL после первого прохода — не прерывайте процесс между этапами.
 - **Компактный JSON по умолчанию**: ключи с `null`, пустыми `{}` и `[]` не пишутся. `--include-null-keys` возвращает полный набор полей.
-- **`EduLevelName`** в `specs/edu_level_names_fz273_map.json`: в `entries` — только отличия от канона и `null`-цели; строка из `canonical_edu_level_names_fz273` без своей записи в `entries` — неявный identity.
+- **`EduLevelName`** в `specs/edu_level_names_fz273_map.json`: в `entries` — только отличия от канона и `null`-цели; строка из `canonical_edu_level_names_fz273` без своей записи в `entries` — неявный identity. При `target=null` ключ удаляется из **обоих** мест (оригинал и `_derived`).
 - Имя исходного XML-файла **не попадает** в строку JSONL. Провенанс снимка добавляется вне конвертера.
 - `tools/org_name_normalize.py` — вспомогательный модуль для черновика словаря наименований; **не** вызывается из `convert.py`.
 - `tools/draft_org_name_dictionary_openrouter.py` требует переменной `OPENROUTER_API_KEY` (см. `.env.example`).
 - Тесты на живой выборке (`test_import_sql_live_sample.py`, `test_import_parquet_live_sample.py`) требуют файла `out/sample_live_5000.jsonl` и соответствующих env-переменных.
+
+## Viewer (граф-вьювер)
+
+```bash
+# Запуск полного стека (SurrealDB + API + Web)
+docker compose --profile viewer up -d
+
+# Импорт JSONL в SurrealDB (из хоста с активированным venv)
+python -m surreal_convert.import_surreal out/data.jsonl --url ws://127.0.0.1:8000 --recreate
+
+# Открыть в браузере
+# http://127.0.0.1:8020
+```
+
+`BIND_IP` в `.env` управляет адресом биндинга всех портов (SurrealDB 8000, API 8010, Web 8020). По умолчанию `127.2.0.1`; для WSL2 с `networkingMode=mirrored` установить `127.0.0.1`.

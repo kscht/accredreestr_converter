@@ -268,11 +268,42 @@ docker compose run --rm converter \
 
 Опции: `--url` (по умолчанию `ws://localhost:8000`), `--ns` (`accred`), `--db` (`accred`), `--user`, `--password`, `--batch N`, `--limit N`, `--recreate` (удалить таблицы перед загрузкой), `--mapping` (свой путь к `mapping.json`).
 
-## Обработка «грязных» данных
+## Граф-вьювер (`viewer`)
+
+Интерактивный браузер графа: поиск организации → раскрытие связей (Cytoscape.js). Требует заполненной SurrealDB.
+
+```bash
+# Запустить весь стек: SurrealDB + FastAPI + React/Vite
+docker compose --profile viewer up -d
+
+# Импортировать JSONL локально (venv активирован)
+python -m surreal_convert.import_surreal out/data.jsonl --url ws://127.0.0.1:8000 --recreate
+
+# Открыть в браузере: http://127.0.0.1:8020
+```
+
+`BIND_IP` в `.env` управляет адресом биндинга всех портов (по умолчанию `127.2.0.1`). Для WSL2 с `networkingMode=mirrored` → установить `127.0.0.1`.
+
+| Сервис | Порт | Описание |
+|--------|------|----------|
+| SurrealDB | 8000 | граф-база данных |
+| API | 8010 | FastAPI: `/api/search`, `/api/expand`, `/api/health` |
+| Web | 8020 | React + Cytoscape.js |
+
+## Обработка «грязных» данных и провенанс (`_derived`)
 
 - Нормализация пробелов и невидимых символов (`clean_text`), `ensure_json_safe` перед `json.dumps`.
 - **`ProgrammCode`**, **`UGSCode`**: старый формат из шести цифр подряд (например `031501`, `090000`) приводится к виду **`XX.XX.XX`**; уже разделённые точками значения не меняются.
 - **`Qualification`**: плейсхолдер **`0`** в XML → **`null`** в JSON. Полный обзор похожих скаляров по файлу: **`python tools/scan_jsonl_placeholder_scalars.py путь.jsonl`** (см. `--help`, **`--limit`**).
+- **`_derived`**: все вычисленные и дозаполненные поля хранятся в `obj["_derived"]`, не мутируя оригинальные XML-значения. Наличие поля в `_derived` — сигнал о проблеме в исходном датасете.
+
+| Уровень | `_derived`-поле | Означает |
+|---------|-----------------|---------|
+| `Certificate` | `EduOrgINN` / `EduOrgOGRN` | не заполнено в XML, взято из AEO |
+| `Certificate` | `HasBranchSupplements` | есть приложения на филиалы |
+| `Supplement` | `IsBranchSupplement` | приложение относится к филиалу |
+| `ActualEducationOrganization` | `INN` / `OGRN` / `KPP` | отсутствовали в карточке АО |
+| `EducationalProgram` | `EduLevelName` | пустой или нестандартный уровень |
 - **Даты:** распространённые форматы; таймзона (`Z`, `±HH:MM`, при наличии `:` в строке — ещё `±HH`, `±HHMM`, напр. `2010-06-18 00:00:00+04`). Успех → строка **`YYYY-MM-DD`**; иначе в JSON остаётся **очищенная строка** + `WARNING`.
 - **Булевы:** не распознано → **`null`** + `WARNING`.
 - **ИНН/КПП/ОГРН:** после очистки не только цифры → **`null`** (при компактном JSON ключ обычно отсутствует); в отчёте `non_digit_ids`; детали в логе только на уровне **DEBUG**.

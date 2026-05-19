@@ -71,7 +71,9 @@
 | `parquet_convert/import_duckdb.py` | JSONL → DuckDB / Parquet (`python -m parquet_convert.import_duckdb`) |
 | `surreal_convert/import_surreal.py` | JSONL → SurrealDB граф по `specs/kg/mapping.json` (`python -m surreal_convert.import_surreal`) |
 | `Dockerfile` | Образ Python 3.12 с зависимостями проекта |
-| `docker-compose.yml` | `converter` (основной), `surrealdb` (профиль `surreal`), `postgres` (профиль `sql`) |
+| `docker-compose.yml` | `converter` (основной), `surrealdb` (профиль `surreal` и `viewer`), `postgres` (профиль `sql`), `api` + `web` (профиль `viewer`) |
+| `viewer/api/main.py` | FastAPI-бэкенд вьювера: `/api/search`, `/api/expand`, `/api/regions`, `/api/levels` |
+| `viewer/web/` | React + Vite + Cytoscape.js — граф-вьювер |
 | `download.py` | Скачивание XML, `--discover`, `--save-urls` |
 | `scrape_opendata.py` | Только поиск URL |
 | `tests/test_convert.py` | Основные тесты |
@@ -131,6 +133,20 @@
 - **`Qualification`**: строка **`0`** (плейсхолдер) → **`null`**.
 - **`EduLevelName`** (программы в **`Supplements[].EducationalPrograms[]`**): если в XML пусто, а **`ProgrammName`** после нормализации совпадает с одной из школьных ступеней (`PROGRAMM_NAMES_THAT_IMPLY_EQUAL_EDU_LEVEL_NAME` в **`convert.py`**, те же строки, что в аудите школьного контура), в JSONL подставляется то же значение; отключение — **`--no-fill-edulevel-from-programm-name`**. Для **непустого** `EduLevelName` по умолчанию применяется **`specs/edu_level_names_fz273_map.json`** (явные свёртки и implicit identity по канону; при `null` в маппинге ключ у программы опускается); отключение — **`--no-normalize-edu-level-names-fz273`**, свой файл — **`--edu-level-names-fz273-map-json`**.
 
+## Принцип `_derived`: оригинал неприкосновенен
+
+Все вычисляемые, дозаполненные и нормализованные значения хранятся в ключе **`_derived`** — не перезаписывая исходные поля XML. Это позволяет всегда понять, какие данные были в оригинальном датасете, а какие вычислены конвертером.
+
+| Ключ в `_derived` | Что означает |
+|-------------------|--------------|
+| `INN`, `OGRN`, `KPP` | Дозаполненные идентификаторы `ActualEducationOrganization` |
+| `EduOrgINN`, `EduOrgOGRN` | Дозаполненные корневые ИНН/ОГРН сертификата |
+| `EduLevelName` | Нормализованный уровень образования (ФЗ-273) |
+| `IsBranchSupplement` | `true` если supplement — филиал (по `IsForBranch`, по `AEO.Id` ≠ корня, или «филиал» в имени ОО) |
+| `HasBranchSupplements` | `true` если у сертификата есть хотя бы один supplement-филиал |
+
+Помощники в `convert.py`: `_set_derived(obj, key, value)` — запись в `_derived`; `_get_effective(obj, key)` — читает из `_derived` (если есть) или из оригинала.
+
 ## Ошибки в полях (что в JSONL)
 
 - **Дата** не распознана → **строка** (после очистки) + `WARNING`, `bad_dates`.
@@ -175,6 +191,10 @@ docker compose run --rm converter \
 
 # PostgreSQL (профиль sql)
 docker compose --profile sql up -d postgres
+
+# Граф-вьювер (профиль viewer)
+docker compose --profile viewer up -d
+# API: http://127.0.0.1:8010  Web: http://127.0.0.1:8020
 ```
 
 ## Каталоги и gitignore

@@ -12,19 +12,41 @@
 flowchart TD
   XML[XML Certificate] --> Parse[elem_to_dict: парсинг и типизация полей]
   Parse --> StripSup[strip_supplements_by_excluded_status]
-  StripSup --> AEO[Дозаполнение INN/OGRN/KPP AEO и EduOrg*]
-  AEO --> EduProg1[fill EduLevelName из ProgrammName]
+  StripSup --> AEO["Дозаполнение INN/OGRN/KPP → _derived"]
+  AEO --> EduProg1["fill EduLevelName → _derived"]
   EduProg1 --> StripDeg[strip_degenerate_educational_program_stubs]
-  StripDeg --> FZ273[normalize EduLevelName по ФЗ-273]
-  FZ273 --> Filter{Фильтры записи?}
+  StripDeg --> FZ273["normalize EduLevelName → _derived"]
+  FZ273 --> Annotate["annotate_derived_fields: IsBranchSupplement, HasBranchSupplements → _derived"]
+  Annotate --> Filter{Фильтры записи?}
   Filter -->|да, отсечь| Skip[Не пишем строку]
   Filter -->|нет| Compact[ensure_json_safe + omit_empty_json_values]
   Compact --> JSONL[Строка JSONL]
-  JSONL --> Pass2[2-й проход: EduLevelName по ProgrammCode]
+  JSONL --> Pass2["2-й проход: EduLevelName → _derived (по ProgrammCode)"]
   Pass2 --> Out[Готовый .jsonl]
 ```
 
 **Важно:** второй проход (`backfill_edulevel_name_from_programm_code_neighbors_jsonl`) выполняется **после** закрытия XML и **перезаписывает** уже записанный файл JSONL (два чтения + временный файл).
+
+---
+
+## Принцип `_derived`: оригинал неприкосновенен
+
+Все вычисленные, дозаполненные и нормализованные значения хранятся **только** в `obj["_derived"][key]` и **не мутируют** оригинальные XML-поля. Это позволяет потребителю отличить данные источника от данных конвертера.
+
+| Уровень объекта | Поля в `_derived` | Причина появления |
+|----------------|-------------------|-------------------|
+| `Certificate` | `EduOrgINN`, `EduOrgOGRN` | отсутствовали в XML, заполнены из AEO |
+| `Certificate` | `HasBranchSupplements` | вычислен |
+| `Supplement` | `IsBranchSupplement` | вычислен |
+| `ActualEducationOrganization` | `INN`, `OGRN`, `KPP` | отсутствовали в карточке АО |
+| `EducationalProgram` | `EduLevelName` | пустой в XML / нестандартный (FZ-273) / заполнен по соседям |
+
+**Хелперы** (используются внутри пайплайна):
+
+- `_set_derived(obj, key, value)` — пишет в `obj["_derived"][key]`.
+- `_get_effective(obj, key)` — возвращает `_derived[key]` при наличии, иначе `obj[key]`. Применяется во всех функциях, которые читают значения, заполненные предыдущими шагами цепочки.
+
+**Исключение:** при `target_edu_level_name: null` в FZ-273 ключ `EduLevelName` удаляется **из обоих** мест — и из оригинала, и из `_derived`, поскольку значение признано некорректным.
 
 ---
 
@@ -108,18 +130,20 @@ flowchart TD
 
 #### `fill_aeo_inn_ogrn_from_coherent_certificate_sources`
 
-1. **Supplement с тем же UID, что корневая AEO** — пустые `INN`/`OGRN` в supplement заполняются из корневой AEO или с корня сертификата (`EduOrgINN` / `EduOrgOGRN`).
-2. **Supplement с другим `Id`** (филиал/площадка) — пустые `INN`/`OGRN` из корневой AEO, иначе из `EduOrg*` на `Certificate`.
-3. **Корневая AEO** — пустые `INN`/`OGRN` из первого supplement с тем же UID, иначе из `EduOrg*` на сертификате.
+1. **Supplement с тем же UID, что корневая AEO** — пустые `INN`/`OGRN` → `_derived` supplement-AEO (донор: корневая AEO или `EduOrgINN`/`EduOrgOGRN` на сертификате).
+2. **Supplement с другим `Id`** (филиал/площадка) — аналогично, донор тот же.
+3. **Корневая AEO** — пустые `INN`/`OGRN` → `_derived` корневой AEO (донор: supplement с тем же UID, иначе `EduOrg*` на сертификате).
 
 Счётчики: блок **`aeo_coherent_inn_ogrn_fills`** в `--report`.
 
 #### `fill_certificate_eduorg_inn_ogrn_from_near_aeo`
 
-Если на корне `Certificate` нет валидных **цифровых** `EduOrgINN` / `EduOrgOGRN`:
+Если на корне `Certificate` нет валидных **цифровых** `EduOrgINN` / `EduOrgOGRN` (проверяется через `_get_effective`):
 
 - сначала из supplement-AEO с тем же UID;
-- иначе из корневой AEO.
+- иначе из корневой AEO (через `_get_effective` — учитывает уже заполненное на шаге выше).
+
+Результат → `Certificate._derived.EduOrgINN` / `EduOrgOGRN`.
 
 Счётчики: **`certificate_EduOrg_inn_ogrn_backfill_from_near_aeo`**.
 
@@ -127,7 +151,7 @@ flowchart TD
 
 Файл по умолчанию: **`specs/certificate_inn_overrides_by_ogrn.json`**.
 
-**`apply_certificate_inn_from_manual_ogrn_map`**: при известном ОГРН записывает отсутствующие `EduOrgINN` и/или `INN` корневой AEO. Если заданы и `EduOrgOGRN`, и `ActualEducationOrganization.OGRN`, они должны **совпадать**, иначе правило не применяется.
+**`apply_certificate_inn_from_manual_ogrn_map`**: при известном ОГРН пишет отсутствующие `EduOrgINN` → `Certificate._derived` и/или `INN` → `ActualEducationOrganization._derived`. Если заданы и `EduOrgOGRN`, и `ActualEducationOrganization.OGRN`, они должны **совпадать**, иначе правило не применяется.
 
 Отключение: **`--no-certificate-inn-overrides-by-ogrn`**. Свой файл: **`--certificate-inn-overrides-by-ogrn-json`**.
 
@@ -135,7 +159,7 @@ flowchart TD
 
 #### «Пустые оболочки» supplement AEO
 
-**`fill_degenerate_supplement_aeo_identity_from_certificate_donors`**: если у supplement-`ActualEducationOrganization` **нет** валидных цифровых `INN` и `OGRN` одновременно (часто только `RegionName`), копируются `INN` / `OGRN` / `KPP` с тех же доноров, что для филиалов.
+**`fill_degenerate_supplement_aeo_identity_from_certificate_donors`**: если у supplement-`ActualEducationOrganization` **нет** валидных цифровых `INN` и `OGRN` (проверяется через `_get_effective`), значения `INN` / `OGRN` / `KPP` копируются в `supplement.ActualEducationOrganization._derived`.
 
 Счётчики: **`supplement_ActualEducationOrganization_degenerate_identity_shell_fill`**.
 
@@ -143,7 +167,7 @@ flowchart TD
 
 #### Подстановка из `ProgrammName`
 
-**`fill_edulevel_name_from_programm_name_when_implied`**: при **пустом** `EduLevelName`, если `ProgrammName` совпадает с одной из школьных ступеней реестра (`PROGRAMM_NAMES_THAT_IMPLY_EQUAL_EDU_LEVEL_NAME` в коде — те же строки, что в аудите школьного контура), в `EduLevelName` пишется тот же текст.
+**`fill_edulevel_name_from_programm_name_when_implied`**: при **пустом** `EduLevelName` (проверяется через `_get_effective`), если `ProgrammName` совпадает с одной из школьных ступеней реестра (`PROGRAMM_NAMES_THAT_IMPLY_EQUAL_EDU_LEVEL_NAME`), значение пишется в `EducationalProgram._derived.EduLevelName`.
 
 Отключение: **`--no-fill-edulevel-from-programm-name`**.
 
@@ -167,13 +191,13 @@ flowchart TD
 
 #### Нормализация по ФЗ-273
 
-**`normalize_edu_level_names_via_fz273_map`**: для **непустого** `EduLevelName` в `EducationalPrograms[]` по файлу **`specs/edu_level_names_fz273_map.json`**:
+**`normalize_edu_level_names_via_fz273_map`**: читает значение через `_get_effective(pr, "EduLevelName")` и по файлу **`specs/edu_level_names_fz273_map.json`**:
 
 | Ситуация | Действие |
 |----------|----------|
-| Строка в `entries` → целевое имя | Переименование |
-| Строка в `entries` → `null` | Ключ `EduLevelName` удаляется |
-| Строка совпадает с каноном, нет в `entries` | Без изменения (implicit identity) |
+| Строка в `entries` → целевое имя (≠ источнику) | Нормализованное значение → `_derived.EduLevelName`; оригинал не тронут |
+| Строка в `entries` → `null` | Ключ `EduLevelName` удаляется **из оригинала и из `_derived`** |
+| Строка совпадает с каноном, нет в `entries` | Без изменения |
 | Не в `entries` и не в каноне | Без изменения + счётчик `unknown_registry_level_programs` |
 
 Отключение: **`--no-normalize-edu-level-names-fz273`**. Свой JSON: **`--edu-level-names-fz273-map-json`**.
@@ -212,9 +236,9 @@ flowchart TD
 
 **`backfill_edulevel_name_from_programm_code_neighbors_jsonl`** (по умолчанию **вкл.**):
 
-1. **Проход 1:** по всему файлу для каждого нормализованного `ProgrammCode` (`XX.YY.ZZ`) строится частота непустых `EduLevelName` среди программ с этим кодом.
+1. **Проход 1:** по всему файлу для каждого нормализованного `ProgrammCode` (`XX.YY.ZZ`) строится частота непустых значений `EduLevelName`, читаемых через `_get_effective` (учитывает `_derived`).
 2. Выбирается уровень с **максимальной** частотой; при равенстве — **лексикографически минимальная** строка.
-3. **Проход 2:** у программ с пустым `EduLevelName` и тем же кодом подставляется выбранный уровень; файл перезаписывается атомарно через `*.neighbor_tmp`.
+3. **Проход 2:** у программ с пустым `_get_effective(pr, "EduLevelName")` и тем же кодом значение пишется в `_derived.EduLevelName`; файл перезаписывается атомарно через `*.neighbor_tmp`.
 
 Отключение: **`--no-fill-edulevel-from-programm-code-neighbors`**.
 
