@@ -273,6 +273,23 @@ _CO_TYPE_MAP: list[tuple[re.Pattern[str], str, bool]] = [
 #   «Чувашской Республики»  → before_noun="Чувашской"
 #   «г. Москвы»             → city="Москвы"
 #   «автономного округа — Югры» (hyphen part stripped, before_noun = adjective before noun)
+# Таблица сокращений канонических уровней образования по ФЗ-273
+_EDU_LEVEL_SHORT: dict[str, str] = {
+    "Дошкольное образование": "ДО",
+    "Начальное общее образование": "НОО",
+    "Основное общее образование": "ООО",
+    "Среднее общее образование": "СОО",
+    "Среднее профессиональное образование": "СПО",
+    "Высшее образование - бакалавриат": "Бакалавриат",
+    "Высшее образование - специалитет": "Специалитет",
+    "Высшее образование - магистратура": "Магистратура",
+    "Высшее образование - подготовка кадров высшей квалификации": "ПКВК",
+    "Дополнительное профессиональное образование": "ДПО",
+}
+
+_EDU_LEVEL_HIGHER_PREFIX = re.compile(r"^Высшее образование\s*[-–—]\s*", re.IGNORECASE)
+_EDU_LEVEL_OBRAZOVANIE_SUFFIX = re.compile(r"\s+образование$", re.IGNORECASE)
+
 _CO_GENITIVE_END = re.compile(
     r"(?:"
     r"(?:^|\s)Республик[иа]\s+(?P<after_resp>\w[\w\-]*)$"
@@ -1524,6 +1541,27 @@ def shorten_region_name(name: str | None) -> str | None:
     return s or name
 
 
+def shorten_edu_level(name: str | None) -> str | None:
+    """Сократить название уровня образования для узла графа.
+
+    Канонические ФЗ-273: НОО, ООО, СОО, СПО, ДО, ДПО, Бакалавриат, Специалитет,
+    Магистратура, ПКВК.
+    Нестандартные: снять «Высшее образование — » спереди или «образование» сзади.
+    """
+    if not name:
+        return None
+    short = _EDU_LEVEL_SHORT.get(name)
+    if short:
+        return short
+    s = _EDU_LEVEL_HIGHER_PREFIX.sub("", name).strip()
+    if s != name:
+        return s[:20].capitalize()
+    s = _EDU_LEVEL_OBRAZOVANIE_SUFFIX.sub("", name).strip()
+    if s != name:
+        return s[:20]
+    return name[:20]
+
+
 def _co_extract_region(text: str) -> str | None:
     """Извлечь короткое имя региона из конца строки контролирующего органа."""
     m = _CO_GENITIVE_END.search(text)
@@ -1632,6 +1670,9 @@ def _graph_collect_programs(
             entry["ugs_code"] = ugs
         if level:
             entry["edu_level"] = level
+            short = shorten_edu_level(level)
+            if short and short != level:
+                entry["edu_level_short"] = short
         programs.append(entry)
 
     return edu_levels, programs
@@ -1750,12 +1791,19 @@ def build_graph_projection(record: dict[str, Any]) -> dict[str, Any]:
             proj["control_organ_short"] = control_organ_short
     if head_levels:
         proj["edu_levels"] = head_levels
+        shorts = [shorten_edu_level(l) for l in head_levels]
+        if any(s != l for s, l in zip(shorts, head_levels)):
+            proj["edu_levels_short"] = shorts
     if head_programs:
         proj["programs"] = head_programs
 
     if branch_map:
         branches = []
         for b in branch_map.values():
+            b_levels = b.get("edu_levels") or []
+            b_shorts = [shorten_edu_level(l) for l in b_levels]
+            if b_levels and any(s != l for s, l in zip(b_shorts, b_levels)):
+                b["edu_levels_short"] = b_shorts
             b_clean = {k: v for k, v in b.items() if not k.startswith("_") and v is not None and v != []}
             if b_clean:
                 branches.append(b_clean)
