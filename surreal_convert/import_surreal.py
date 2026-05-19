@@ -401,7 +401,7 @@ def import_surreal(
     batch_size: int = DEFAULT_BATCH,
     workers: int = DEFAULT_WORKERS,
     limit: int | None = None,
-    recreate: bool = False,
+    recreate: bool = True,
     mapping_path: Path | None = None,
 ) -> int:
     return asyncio.run(
@@ -441,8 +441,9 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
                    help=f"Параллельных HTTP-запросов (по умолчанию {DEFAULT_WORKERS})")
     p.add_argument("--limit",   type=int, default=None, metavar="N",
                    help="Не более N строк JSONL")
-    p.add_argument("--recreate", action="store_true",
-                   help="Удалить все таблицы перед импортом; использует CREATE вместо UPSERT")
+    p.add_argument("--no-recreate", dest="recreate", action="store_false",
+                   help="Не удалять таблицы перед импортом; использовать UPSERT вместо CREATE")
+    p.set_defaults(recreate=True)
     p.add_argument("--mapping",  type=Path, default=None,
                    help="Путь к specs/kg/mapping.json (по умолчанию из репозитория)")
     return p.parse_args(argv)

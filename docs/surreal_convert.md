@@ -8,11 +8,15 @@ CLI читает **JSONL** (выход **`convert.py`**) и импортируе
 
 ```bash
 # Локально — нужен SurrealDB на http://localhost:8000
-python -m surreal_convert.import_surreal out/data.jsonl --recreate
-python -m surreal_convert.import_surreal out/data.jsonl --limit 100 --recreate
+# По умолчанию база пересоздаётся полностью (--recreate включён)
+python -m surreal_convert.import_surreal out/data.jsonl
+python -m surreal_convert.import_surreal out/data.jsonl --limit 100
 
 # Тонкая настройка скорости (больше батч + больше воркеров)
-python -m surreal_convert.import_surreal out/data.jsonl --recreate --batch 1000 --workers 8
+python -m surreal_convert.import_surreal out/data.jsonl --batch 1000 --workers 8
+
+# Только обновить существующую базу без пересоздания (UPSERT)
+python -m surreal_convert.import_surreal out/data.jsonl --no-recreate
 ```
 
 Через Docker Compose (`surrealdb` запускается с профилем `surreal`):
@@ -21,7 +25,7 @@ python -m surreal_convert.import_surreal out/data.jsonl --recreate --batch 1000 
 docker compose --profile surreal up -d surrealdb
 docker compose run --rm converter \
   python -m surreal_convert.import_surreal out/data.jsonl \
-  --url http://surrealdb:8000 --recreate
+  --url http://surrealdb:8000
 ```
 
 Основные опции:
@@ -36,7 +40,7 @@ docker compose run --rm converter \
 | `--batch N` | `500` | Сертификатов на один HTTP-запрос |
 | `--workers N` | `4` | Параллельных HTTP-запросов |
 | `--limit N` | — | Не более N строк JSONL |
-| `--recreate` | — | `REMOVE TABLE IF EXISTS` + CREATE вместо UPSERT (быстрее) |
+| `--no-recreate` | — | Не удалять таблицы; использовать UPSERT вместо CREATE |
 | `--mapping` | `specs/kg/mapping.json` | Свой путь к KG-mapping |
 
 Полный список: `python -m surreal_convert.import_surreal --help`.
@@ -47,7 +51,7 @@ docker compose run --rm converter \
 - используется **CREATE** вместо UPSERT — нет проверки существования записи, заметно быстрее;
 - рекомендованный режим при полной пересборке базы (граф очищается перед каждым импортом).
 
-Без `--recreate` используется UPSERT — поведение идемпотентно (повторный прогон обновляет значения).
+С `--no-recreate` используется UPSERT — поведение идемпотентно (повторный прогон обновляет значения).
 
 ## Схема графа
 
