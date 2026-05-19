@@ -17,11 +17,12 @@ flowchart TD
   EduProg1 --> StripDeg[strip_degenerate_educational_program_stubs]
   StripDeg --> FZ273["normalize EduLevelName → _derived"]
   FZ273 --> Annotate["annotate_derived_fields: IsBranchSupplement, HasBranchSupplements → _derived"]
-  Annotate --> Filter{Фильтры записи?}
+  Annotate --> Graph["build_graph_projection → _graph"]
+  Graph --> Filter{Фильтры записи?}
   Filter -->|да, отсечь| Skip[Не пишем строку]
   Filter -->|нет| Compact[ensure_json_safe + omit_empty_json_values]
   Compact --> JSONL[Строка JSONL]
-  JSONL --> Pass2["2-й проход: EduLevelName → _derived (по ProgrammCode)"]
+  JSONL --> Pass2["2-й проход: EduLevelName → _derived (по ProgrammCode)\n+ повторный build_graph_projection"]
   Pass2 --> Out[Готовый .jsonl]
 ```
 
@@ -245,6 +246,81 @@ flowchart TD
 Счётчик: **`educational_program_EduLevelName_neighbor_backfill_from_ProgrammCode_global_pass`**.
 
 Глобальность: доноры могут быть на **других** сертификатах в том же файле JSONL.
+
+---
+
+## Этап 5. Проекция `_graph` (`build_graph_projection`)
+
+После `annotate_derived_fields` и **до** записи строки вызывается `build_graph_projection(record)` — функция формирует ключ `_graph` с готовыми полями для граф-вьювера. Граф строится **напрямую из `_graph`**, без необходимости знать правила `_derived` или обращаться к оригинальным XML-полям.
+
+Функция вызывается **дважды**: в первом проходе и после 2-го прохода (backfill EduLevelName по соседям), чтобы `_graph.programs[].edu_level` всегда отражал финальное значение.
+
+### Структура `_graph`
+
+```json
+{
+  "org": {
+    "ogrn": "1234567890123",
+    "inn": "1234567890",
+    "display_name": "Гимназия №1",
+    "founder_key": "municipal:Брянская область",
+    "founder_label": "Муниципальный, Брянская область"
+  },
+  "region": "Брянская область",
+  "region_short": "Брянская",
+  "control_organ": "Министерство образования и науки Брянской области",
+  "control_organ_short": "Минобр Брянской",
+  "edu_levels": ["Основное общее образование", "Среднее общее образование"],
+  "edu_levels_short": ["ООО", "СОО"],
+  "programs": [
+    {
+      "code": "44.02.01",
+      "ugs_code": "44.00.00",
+      "edu_level": "Среднее профессиональное образование",
+      "edu_level_short": "СПО"
+    }
+  ],
+  "branches": [
+    {
+      "ogrn": "...",
+      "inn": "...",
+      "display_name": "Филиал №1",
+      "edu_levels": ["Начальное общее образование"],
+      "edu_levels_short": ["НОО"],
+      "programs": [...]
+    }
+  ]
+}
+```
+
+Пустые списки и `None`-значения в `_graph` не включаются. `edu_levels_short` / `region_short` / `control_organ_short` пишутся только если значение отличается от оригинала.
+
+### Вспомогательные функции
+
+| Функция | Назначение |
+|---------|------------|
+| `make_display_name(full, short)` | Извлекает короткое имя для узла: сначала из кавычек `«…»` (innermost), затем убирает ОПФ-обёртку, аббревиатуры и хвосты |
+| `shorten_region_name(name)` | Регион без суффикса «область/край/…»: «Брянская», «г. Москва» → «Москва», «Республика Татарстан» → «Татарстан» |
+| `shorten_edu_level(name, code=None)` | Аббревиатура уровня образования: ДО/НОО/ООО/СОО/СПО/ДПО/Бакалавриат/Специалитет/Магистратура/ПКВК; для ПКВК с `code` уточняет подтип по второму сегменту (`06`→Аспирантура, `07`→Адъюнктура, `08`→Ординатура, `09`→Ассистентура) |
+| `make_control_organ_display(name)` | Сокращает ControlOrgan: «Министерство образования Брянской области» → «Минобр Брянской», «Рособрнадзор» остаётся как есть; таблица правил — `_CO_TYPE_MAP` |
+| `_co_extract_region(text)` | Извлекает регион из конца строки ControlOrgan (родительный падеж): «…Брянской области» → «Брянской» |
+| `_derive_founder(is_federal, form_name, region_name, edu_levels)` | Синтетический учредитель: `IsFederal+ВО` → Минобрнауки, `IsFederal` без ВО → Минпросвещения, «муниципальное» → municipal:region, «государственное» → regional:region, частные → private |
+| `_graph_collect_programs(supplement)` | Собирает уникальные `edu_levels` и `programs` (с `code`, `ugs_code`, `edu_level`, `edu_level_short`) из одного supplement |
+
+### Учредитель (`founder_key` / `founder_label`)
+
+В XML нет прямого поля «учредитель» — он выводится синтетически:
+
+| Условие | `founder_key` | `founder_label` |
+|---------|---------------|-----------------|
+| `IsFederal=true` + уровни ВО | `federal:nauka` | Минобрнауки России |
+| `IsFederal=true` без ВО | `federal:prosv` | Минпросвещения России |
+| `FormName` ∋ «муниципальное» | `municipal:<region>` | Муниципальный, `<region>` |
+| `FormName` ∋ «государственное» | `regional:<region>` | Субъект РФ, `<region>` |
+| Частные формы | `private` | Частный учредитель |
+| Остальные | `unknown` | Учредитель неизвестен |
+
+`_GRAPH_HIGHER_EDU_LEVELS` — frozenset четырёх уровней ВО, используется для различия Минобрнауки / Минпросвещения.
 
 ---
 

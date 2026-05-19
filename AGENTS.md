@@ -72,7 +72,7 @@
 | `surreal_convert/import_surreal.py` | JSONL → SurrealDB граф по `specs/kg/mapping.json` (`python -m surreal_convert.import_surreal`) |
 | `Dockerfile` | Образ Python 3.12 с зависимостями проекта |
 | `docker-compose.yml` | `converter` (основной), `surrealdb` (профиль `surreal` и `viewer`), `postgres` (профиль `sql`), `api` + `web` (профиль `viewer`) |
-| `viewer/api/main.py` | FastAPI-бэкенд вьювера: `/api/search`, `/api/expand`, `/api/regions`, `/api/levels` |
+| `viewer/api/main.py` | FastAPI-бэкенд вьювера: `/api/search`, `/api/expand`, `/api/regions`, `/api/levels`; читает поля `_graph` из SurrealDB |
 | `viewer/web/` | React + Vite + Cytoscape.js — граф-вьювер |
 | `download.py` | Скачивание XML, `--discover`, `--save-urls` |
 | `scrape_opendata.py` | Только поиск URL |
@@ -132,6 +132,23 @@
 - **`ProgrammCode`**, **`UGSCode`**: если после `clean_text` значение уже вида **`XX.XX.XX`**, оставляем; иначе убираются пробелы/дефисы и при ровно **шести цифрах** подряд вставляются точки (напр. `031501` → `03.15.01`, `090000` → `09.00.00`).
 - **`Qualification`**: строка **`0`** (плейсхолдер) → **`null`**.
 - **`EduLevelName`** (программы в **`Supplements[].EducationalPrograms[]`**): если в XML пусто, а **`ProgrammName`** после нормализации совпадает с одной из школьных ступеней (`PROGRAMM_NAMES_THAT_IMPLY_EQUAL_EDU_LEVEL_NAME` в **`convert.py`**, те же строки, что в аудите школьного контура), в JSONL подставляется то же значение; отключение — **`--no-fill-edulevel-from-programm-name`**. Для **непустого** `EduLevelName` по умолчанию применяется **`specs/edu_level_names_fz273_map.json`** (явные свёртки и implicit identity по канону; при `null` в маппинге ключ у программы опускается); отключение — **`--no-normalize-edu-level-names-fz273`**, свой файл — **`--edu-level-names-fz273-map-json`**.
+
+## Проекция `_graph`: готовые поля для граф-вьювера
+
+`build_graph_projection(record)` формирует ключ **`_graph`** в каждой строке JSONL — чистые, уже вычисленные поля для построения графа. Вьювер и импортёр читают `_graph` напрямую, не зная правил `_derived` и не обращаясь к исходным XML-полям.
+
+Вызывается в конце пайплайна первого прохода и повторно после 2-го прохода (backfill EduLevelName), чтобы `_graph.programs[].edu_level_short` всегда отражал финальное значение.
+
+| Поле `_graph` | Источник / логика |
+|---------------|-------------------|
+| `org.ogrn`, `org.inn` | `_get_effective(record, "EduOrgOGRN/INN")` |
+| `org.display_name` | `make_display_name` — из кавычек или без ОПФ-обёртки |
+| `org.founder_key`, `org.founder_label` | `_derive_founder` — синтетически из `IsFederal`, `FormName`, `RegionName`, уровней ВО |
+| `region` / `region_short` | `RegionName` / `shorten_region_name` (без «область/край/…») |
+| `control_organ` / `control_organ_short` | `ControlOrgan` / `make_control_organ_display` |
+| `edu_levels` / `edu_levels_short` | Уникальные EduLevelName из non-branch supplements / `shorten_edu_level` |
+| `programs[].edu_level_short` | `shorten_edu_level(level, code)` — для ПКВК уточняет подтип по коду программы: `06`→Аспирантура, `07`→Адъюнктура, `08`→Ординатура, `09`→Ассистентура |
+| `branches[]` | Supplements с `IsBranchSupplement=true`, сгруппированные по effective OGRN |
 
 ## Принцип `_derived`: оригинал неприкосновенен
 

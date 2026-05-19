@@ -48,10 +48,12 @@ elem_to_dict (парсинг + типизация)
   → strip_degenerate_educational_program_stubs
   → normalize_edulevel_fz273  (нормализованный EduLevelName → _derived)
   → annotate_derived_fields  (IsBranchSupplement, HasBranchSupplements → _derived)
+  → build_graph_projection  (_graph → готовые поля для граф-вьювера)
   → фильтры (inactive / outside-rf / invalid-ogrn / blocklist)
   → ensure_json_safe + omit_empty_json_values
   → запись строки JSONL
-После закрытия XML → 2-й проход: backfill_edulevel_name_from_programm_code_neighbors_jsonl (EduLevelName → _derived, перезаписывает файл)
+После закрытия XML → 2-й проход: backfill_edulevel_name_from_programm_code_neighbors_jsonl
+  (EduLevelName → _derived, перезаписывает файл; повторно вызывает build_graph_projection)
 ```
 
 ### Структура `_derived`
@@ -67,6 +69,45 @@ elem_to_dict (парсинг + типизация)
 
 Хелперы: `_set_derived(obj, key, value)` и `_get_effective(obj, key)` (читает сначала `_derived`, затем оригинал — используется внутри цепочки fill-функций).
 
+### Структура `_graph`
+
+`build_graph_projection(record)` формирует готовую проекцию для граф-вьювера — чистые поля без грязных оригиналов и без необходимости знать правила `_derived`. Вызывается в конце пайплайна и повторно после 2-го прохода.
+
+```json
+{
+  "org": {
+    "ogrn": "...", "inn": "...",
+    "display_name": "Гимназия №1",
+    "founder_key": "municipal:Брянская область",
+    "founder_label": "Муниципальный, Брянская область"
+  },
+  "region": "Брянская область",
+  "region_short": "Брянская",
+  "control_organ": "Министерство образования ...",
+  "control_organ_short": "Минобр Брянской",
+  "edu_levels": ["Основное общее образование"],
+  "edu_levels_short": ["ООО"],
+  "programs": [
+    {"code": "44.02.01", "ugs_code": "44.00.00", "edu_level": "СПО", "edu_level_short": "СПО"}
+  ],
+  "branches": [
+    {"ogrn": "...", "display_name": "...", "edu_levels": [...], "edu_levels_short": [...], "programs": [...]}
+  ]
+}
+```
+
+Вспомогательные функции (`_graph`-блок в `convert.py`):
+
+| Функция | Назначение |
+|---------|------------|
+| `make_display_name(full, short)` | Короткое имя узла — из кавычек, без ОПФ-обёртки |
+| `shorten_region_name(name)` | Регион без «область/край/…»: «Брянская», «г. Москва» → «Москва» |
+| `shorten_edu_level(name, code)` | Аббревиатура уровня: ДО/НОО/ООО/СОО/СПО/ДПО/Бакалавриат/…/ПКВК; для ПКВК с кодом уточняет подтип (06=Аспирантура, 07=Адъюнктура, 08=Ординатура, 09=Ассистентура) |
+| `make_control_organ_display(name)` | «Министерство образования Брянской области» → «Минобр Брянской» |
+| `_co_extract_region(text)` | Регион из конца строки ControlOrgan (родительный падеж) |
+| `_derive_founder(is_federal, form_name, region_name, edu_levels)` | Синтетический учредитель: `{key, label}` |
+| `_graph_collect_programs(supplement)` | edu_levels + programs (с edu_level_short) из одного supplement |
+
 ### Ключевые константы в `convert.py`
 
 - `CERTIFICATE_ROOT_STATUSES_OMITTED_FROM_JSONL` — статусы, при которых сертификат не пишется.
@@ -74,6 +115,11 @@ elem_to_dict (парсинг + типизация)
 - `CERTIFICATE_IDS_OMITTED_FROM_JSONL_BLOCKLIST` — жёсткий список `Certificate.Id` (UUID), никогда не попадающих в JSONL.
 - `PROGRAMM_NAMES_THAT_IMPLY_EQUAL_EDU_LEVEL_NAME` — школьные ступени для подстановки `EduLevelName`.
 - `DEFAULT_SCHEMA_FILENAME` — путь к эталонному XML-схеме (`specs/xml/data-20160908-structure-20160713.xml`).
+- `_GRAPH_HIGHER_EDU_LEVELS` — уровни ВО для вывода учредителя «Минобрнауки» (при `IsFederal=true`).
+- `_EDU_LEVEL_SHORT` — словарь канонических сокращений 10 уровней ФЗ-273.
+- `_PKVK_BY_CODE_SEGMENT` — сегмент кода → подтип ПКВК (`06`→Аспирантура, `07`→Адъюнктура, `08`→Ординатура, `09`→Ассистентура).
+- `_CO_TYPE_MAP` — правила сокращений для `ControlOrgan` (Рособрнадзор, Минобр, Миннауки, …).
+- `_CO_GENITIVE_END` — регекс для извлечения региона из конца строки ControlOrgan (родительный падеж).
 
 ### Структура каталогов
 
@@ -111,6 +157,7 @@ ER-диаграмма: `python tools/generate_sql_er_diagram.py`.
 ## Важные особенности
 
 - **`_derived` vs оригинал**: все вычисляемые поля пишутся только в `_derived`; XML-поля остаются нетронутыми. Внутри цепочки fill-функций используйте `_get_effective(obj, key)` — читает `_derived` с приоритетом над оригиналом.
+- **`_graph`**: `build_graph_projection` вызывается **дважды** — в первом проходе и после 2-го прохода (backfill EduLevelName), чтобы `_graph.programs[].edu_level` всегда отражал финальное значение. Все вспомогательные функции (`make_display_name`, `shorten_edu_level`, `make_control_organ_display`, `_derive_founder`) объявлены в секции `# ---- Функции построения _graph`.
 - **Второй проход** (`backfill_edulevel_name_from_programm_code_neighbors_jsonl`) пишет временный файл и **заменяет** выходной JSONL после первого прохода — не прерывайте процесс между этапами.
 - **Компактный JSON по умолчанию**: ключи с `null`, пустыми `{}` и `[]` не пишутся. `--include-null-keys` возвращает полный набор полей.
 - **`EduLevelName`** в `specs/edu_level_names_fz273_map.json`: в `entries` — только отличия от канона и `null`-цели; строка из `canonical_edu_level_names_fz273` без своей записи в `entries` — неявный identity. При `target=null` ключ удаляется из **обоих** мест (оригинал и `_derived`).
