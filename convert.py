@@ -243,6 +243,15 @@ _GRAPH_WRAPPER = re.compile(
 
 _GRAPH_QUOTED = re.compile(r"«([^«»]+)»")  # innermost: no nested « or » in content
 
+# Суффикс региона для сокращения («область», «край», «автономный округ» и т.п.)
+_REGION_SHORT_SUFFIX = re.compile(
+    r"\s+(?:автономная\s+)?(?:область|край|автономный\s+округ|округ|район|республика)"
+    r"(?:\s*[—–-].*)?$",
+    re.IGNORECASE,
+)
+# Префикс «Республика X» и «г. X»
+_REGION_SHORT_PREFIX = re.compile(r"^(?:г\.\s*|Республика\s+)", re.IGNORECASE)
+
 
 def _project_root() -> Path:
     return Path(__file__).resolve().parent
@@ -1468,6 +1477,21 @@ def make_display_name(full_name: str | None, short_name: str | None) -> str | No
     return fn[:60]
 
 
+def shorten_region_name(name: str | None) -> str | None:
+    """Сократить название региона для отображения на узле графа.
+
+    «Брянская область» → «Брянская»,  «Краснодарский край» → «Краснодарский»,
+    «Республика Татарстан» → «Татарстан»,  «Чувашская Республика» → «Чувашская»,
+    «г. Москва» → «Москва»,  «Ханты-Мансийский автономный округ — Югра» → «Ханты-Мансийский».
+    Если сокращение не изменило строку — возвращает оригинал.
+    """
+    if not name:
+        return name
+    s = _REGION_SHORT_SUFFIX.sub("", name.strip())
+    s = _REGION_SHORT_PREFIX.sub("", s).strip()
+    return s or name
+
+
 def _derive_founder(
     is_federal: bool | None,
     form_name: str | None,
@@ -1632,6 +1656,7 @@ def build_graph_projection(record: dict[str, Any]) -> dict[str, Any]:
     )
 
     control_organ = record.get("ControlOrgan") or None
+    region_short = shorten_region_name(region)
 
     org: dict[str, Any] = {}
     if ogrn:
@@ -1642,14 +1667,16 @@ def build_graph_projection(record: dict[str, Any]) -> dict[str, Any]:
         org["display_name"] = display_name
     org["founder_key"] = founder["key"]
     org["founder_label"] = founder["label"]
-    if control_organ:
-        org["control_organ"] = control_organ
 
     proj: dict[str, Any] = {}
     if org:
         proj["org"] = org
     if region:
         proj["region"] = region
+        if region_short and region_short != region:
+            proj["region_short"] = region_short
+    if control_organ:
+        proj["control_organ"] = control_organ
     if head_levels:
         proj["edu_levels"] = head_levels
     if head_programs:
