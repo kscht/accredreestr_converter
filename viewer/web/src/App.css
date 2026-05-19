@@ -1,0 +1,31 @@
+.app { display: flex; flex-direction: column; height: 100vh; }
+
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: #1a1f2e;
+  color: #e8eaf0;
+  flex-shrink: 0;
+}
+.app-title { font-weight: 600; font-size: 14px; }
+.app-loading { font-size: 12px; color: #90caf9; }
+.app-error { font-size: 12px; color: #ef9a9a; flex: 1; }
+.app-header .btn { margin-left: auto; }
+
+.app-body { display: flex; flex: 1; overflow: hidden; }
+
+.btn {
+  padding: 5px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+}
+.btn-primary { background: #1976d2; color: #fff; }
+.btn-primary:hover { background: #1565c0; }
+.btn-primary:disabled { background: #555; cursor: default; }
+.btn-ghost { background: transparent; color: #90caf9; border: 1px solid #374151; }
+.btn-ghost:hover { background: #374151; }

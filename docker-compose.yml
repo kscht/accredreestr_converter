@@ -10,13 +10,42 @@ services:
 
   surrealdb:
     image: surrealdb/surrealdb:latest
-    command: start --log info --user root --pass root file:///data/accred.surreal
+    user: "0"
+    command: start --log info --user root --pass root surrealkv:///data/accred.surreal
     volumes:
-      - ./data:/data
+      - surreal_data:/data
     ports:
-      - "8000:8000"
+      - "${BIND_IP:-127.2.0.1}:8000:8000"
     profiles:
       - surreal
+      - viewer
+
+  api:
+    build: ./viewer/api
+    ports:
+      - "${BIND_IP:-127.2.0.1}:8010:8010"
+    environment:
+      - SURREAL_URL=http://surrealdb:8000
+      - SURREAL_NS=accred
+      - SURREAL_DB=accred
+      - SURREAL_USER=root
+      - SURREAL_PASS=root
+      - BIND_IP=0.0.0.0
+    depends_on:
+      - surrealdb
+    profiles:
+      - viewer
+
+  web:
+    build: ./viewer/web
+    ports:
+      - "${BIND_IP:-127.2.0.1}:8020:8020"
+    environment:
+      - BIND_IP=0.0.0.0
+    depends_on:
+      - api
+    profiles:
+      - viewer
 
   postgres:
     image: postgres:16-alpine
@@ -25,6 +54,9 @@ services:
       POSTGRES_PASSWORD: accred
       POSTGRES_DB: accred
     ports:
-      - "5432:5432"
+      - "${BIND_IP:-127.2.0.1}:5432:5432"
     profiles:
       - sql
+
+volumes:
+  surreal_data:

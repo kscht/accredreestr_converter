@@ -22,3 +22,4 @@ examples/certificate_lines_with_branch_supplements.jsonl
 
 # Полные строки из audit_dataset_edu_program_levels.py (десятки–сотни МБ на полном снимке)
 examples/certificate_lines_edu_programs_*.jsonl
+.env
