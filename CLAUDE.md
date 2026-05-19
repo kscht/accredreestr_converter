@@ -15,12 +15,14 @@ pip install -r requirements.txt
 
 # Через Docker (не нужно локальное venv)
 docker compose build
-docker compose run --rm converter python download.py --discover -o data/
+docker compose run --rm converter sh -c \
+  "python scrape_opendata.py -o data/download_urls.txt && python download.py -c data/download_urls.txt -o data/"
 docker compose run --rm converter python convert.py data/data-*-structure-*.xml --progress-every 50000
 docker compose run --rm converter pytest
 
-# Скачать последний снимок XML в data/
-python download.py --discover -o data/
+# Скачать последний снимок XML в data/ (локально)
+python scrape_opendata.py -o download_urls.txt
+python download.py -o data/
 
 # Конвертация XML → JSONL (по умолчанию: out/<имя-xml>.jsonl)
 python convert.py data/data-*-structure-*.xml --progress-every 50000 --report out/report.json

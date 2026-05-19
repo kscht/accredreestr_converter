@@ -10,8 +10,8 @@
 
 - Страница: `https://isga.obrnadzor.gov.ru/accredreestr/opendata/` (Vue SPA).
 - Список версий XML: тот же HTML, что у `https://isga.obrnadzor.gov.ru/api/spa/accredreestr/perechen` (iframe «Гиперссылки (URL) на версии набора данных»).
-- **`scrape_opendata.py`** — находит `app.*.js`, путь iframe, парсит ссылки `*.xml`.
-- **`download.py --discover`** — URL со страницы версий, **только последний снимок** по `data-YYYYMMDD-` в имени; **`--discover --all-versions`** — все ссылки. Потоковое скачивание в `data/` (`-o` = **каталог**). Список URL из файла: без аргументов читается **`download_urls.txt`** (или **`-c` / `--config`**).
+- **`scrape_opendata.py`** — находит `app.*.js`, путь iframe, парсит ссылки `*.xml`. Рекомендуемый первый шаг: **`python scrape_opendata.py -o download_urls.txt`** (файл gitignored).
+- **`download.py`** — потоковое скачивание в `data/` (`-o` = каталог). Без аргументов читает **`download_urls.txt`** в корне (или **`-c путь`**). Встроенный поиск URL: **`--discover`** (только последний снимок), **`--discover --all-versions`** — все. В Docker файл нужно класть в `data/` (bind-mounted): `scrape_opendata.py -o data/download_urls.txt && download.py -c data/download_urls.txt -o data/`.
 
 ## Эталон полей (схема)
 
@@ -162,7 +162,8 @@ pytest
 
 ```bash
 docker compose build
-docker compose run --rm converter python download.py --discover -o data/
+docker compose run --rm converter sh -c \
+  "python scrape_opendata.py -o data/download_urls.txt && python download.py -c data/download_urls.txt -o data/"
 docker compose run --rm converter python convert.py data/data-*-structure-*.xml --progress-every 50000
 docker compose run --rm converter pytest
 
