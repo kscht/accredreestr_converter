@@ -1,30 +1,38 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type { CyNode, CyEdge, GraphPatch, NodeData } from "./types";
-import { search, expand } from "./api";
+import { search, expand, fetchRegions, fetchLevels, fetchFilterOptions } from "./api";
 import SearchPanel from "./SearchPanel";
 import GraphCanvas from "./GraphCanvas";
 import "./App.css";
 
 export default function App() {
-  const [nodes, setNodes] = useState<CyNode[]>([]);
-  const [edges, setEdges] = useState<CyEdge[]>([]);
+  const [nodes, setNodes]     = useState<CyNode[]>([]);
+  const [edges, setEdges]     = useState<CyEdge[]>([]);
   const [selected, setSelected] = useState<NodeData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError]     = useState<string | null>(null);
+
+  const [allRegions, setAllRegions] = useState<string[]>([]);
+  const [allLevels,  setAllLevels]  = useState<string[]>([]);
+
+  useEffect(() => {
+    fetchRegions().then(setAllRegions).catch(() => {});
+    fetchLevels().then(setAllLevels).catch(() => {});
+  }, []);
 
   const applyPatch = useCallback((patch: GraphPatch, focusId?: string) => {
-    setNodes((prev) => {
-      const map = new Map(prev.map((n) => [n.data.id, n]));
-      patch.nodes.forEach((n) => map.set(n.data.id, n));
+    setNodes(prev => {
+      const map = new Map(prev.map(n => [n.data.id, n]));
+      patch.nodes.forEach(n => map.set(n.data.id, n));
       return [...map.values()];
     });
-    setEdges((prev) => {
-      const map = new Map(prev.map((e) => [e.data.id, e]));
-      patch.edges.forEach((e) => map.set(e.data.id, e));
+    setEdges(prev => {
+      const map = new Map(prev.map(e => [e.data.id, e]));
+      patch.edges.forEach(e => map.set(e.data.id, e));
       return [...map.values()];
     });
     if (focusId) {
-      const node = patch.nodes.find((n) => n.data.id === focusId);
+      const node = patch.nodes.find(n => n.data.id === focusId);
       if (node) setSelected(node.data);
     }
   }, []);
@@ -68,7 +76,7 @@ export default function App() {
       <header className="app-header">
         <span className="app-title">Реестр аккредитации — граф</span>
         {loading && <span className="app-loading">загрузка…</span>}
-        {error && <span className="app-error">{error}</span>}
+        {error   && <span className="app-error">{error}</span>}
         <button className="btn btn-ghost" onClick={handleClear}>Очистить граф</button>
       </header>
       <div className="app-body">
@@ -77,6 +85,9 @@ export default function App() {
           onSelect={handleSearchSelect}
           onExpand={handleExpandSelected}
           search={search}
+          fetchFilterOptions={fetchFilterOptions}
+          allRegions={allRegions}
+          allLevels={allLevels}
         />
         <GraphCanvas
           nodes={nodes}

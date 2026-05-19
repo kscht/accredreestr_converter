@@ -96,7 +96,7 @@ def _id_to_parts(sid: str) -> tuple[str, str]:
 
 def _node_label(table: str, r: dict) -> str:
     if table == "certificate":
-        return r.get("EduOrgShortName") or r.get("EduOrgFullName") or _extract_id(r.get("id"))
+        return r.get("g_display_name") or r.get("EduOrgShortName") or r.get("EduOrgFullName") or _extract_id(r.get("id"))
     if table == "supplement":
         return r.get("Number") or _extract_id(r.get("id"))
     if table == "educational_program":
@@ -152,21 +152,97 @@ async def health():
         raise HTTPException(status_code=503, detail=str(exc))
 
 
+def _esc(s: str) -> str:
+    return s.replace("\\", "\\\\").replace('"', '\\"')
+
+
 @app.get("/api/search")
-async def search(q: str = Query(""), limit: int = 20):
+async def search(
+    q: str = Query(""),
+    region: str = Query(""),
+    level: str = Query(""),
+    control_organ: str = Query(""),
+    limit: int = 20,
+):
+    conditions: list[str] = []
     q = q.strip()
-    if not q:
+    if q:
+        e = _esc(q)
+        conditions.append(
+            f'(string::lowercase(EduOrgFullName ?? "") CONTAINS string::lowercase("{e}")'
+            f' OR string::lowercase(g_display_name ?? "") CONTAINS string::lowercase("{e}")'
+            f' OR EduOrgOGRN = "{e}" OR EduOrgINN = "{e}")'
+        )
+    region = region.strip()
+    if region:
+        conditions.append(f'g_region = "{_esc(region)}"')
+    level = level.strip()
+    if level:
+        conditions.append(f'g_edu_levels CONTAINS "{_esc(level)}"')
+    control_organ = control_organ.strip()
+    if control_organ:
+        conditions.append(f'g_control_organ_short = "{_esc(control_organ)}"')
+
+    if not conditions:
         return {"nodes": []}
-    esc = q.replace("\\", "\\\\").replace('"', '\\"')
+
+    where = " AND ".join(conditions)
     surql = (
-        f'SELECT id, EduOrgFullName, EduOrgShortName, EduOrgOGRN, EduOrgINN, StatusName, RegionName '
-        f'FROM certificate '
-        f'WHERE string::lowercase(EduOrgFullName ?? "") CONTAINS string::lowercase("{esc}") '
-        f'   OR EduOrgOGRN = "{esc}" OR EduOrgINN = "{esc}" '
-        f'LIMIT {limit};'
+        f'SELECT id, EduOrgFullName, EduOrgShortName, EduOrgOGRN, EduOrgINN,'
+        f' g_region, g_display_name, g_edu_levels, g_control_organ_short'
+        f' FROM certificate WHERE {where} LIMIT {limit};'
     )
     resp = await _query(surql)
     return {"nodes": [_to_cy_node(r) for r in _ok(resp)]}
+
+
+@app.get("/api/filter_options")
+async def filter_options(
+    field: str = Query(...),
+    region: str = Query(""),
+    level: str = Query(""),
+    control_organ: str = Query(""),
+):
+    if field not in ("region", "level", "control_organ"):
+        raise HTTPException(status_code=400, detail=f"Unknown field: {field}")
+
+    # Строим WHERE из каскадных фильтров (не включаем сам запрашиваемый field)
+    conditions: list[str] = []
+    if region.strip() and field != "region":
+        conditions.append(f'g_region = "{_esc(region.strip())}"')
+    if level.strip() and field != "level":
+        conditions.append(f'g_edu_levels CONTAINS "{_esc(level.strip())}"')
+    if control_organ.strip() and field != "control_organ":
+        conditions.append(f'g_control_organ_short = "{_esc(control_organ.strip())}"')
+
+    base_where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+
+    if field == "region":
+        surql = f'SELECT DISTINCT g_region FROM certificate {base_where} ORDER BY g_region LIMIT 500;'
+        resp = await _query(surql)
+        vals = sorted({r["g_region"] for r in _ok(resp) if r.get("g_region")})
+    elif field == "level":
+        # g_edu_levels — массив; собираем flatten на Python-стороне
+        surql = f'SELECT VALUE g_edu_levels FROM certificate {base_where} LIMIT 5000;'
+        resp = await _query(surql)
+        seen: set[str] = set()
+        vals = []
+        for arr in _ok(resp):
+            if isinstance(arr, list):
+                for v in arr:
+                    if v and v not in seen:
+                        seen.add(v)
+                        vals.append(v)
+        vals.sort()
+    else:  # control_organ
+        surql = (
+            f'SELECT DISTINCT g_control_organ_short FROM certificate '
+            f'{base_where} ORDER BY g_control_organ_short LIMIT 300;'
+        )
+        resp = await _query(surql)
+        vals = sorted({r["g_control_organ_short"] for r in _ok(resp) if r.get("g_control_organ_short")})
+
+    return {"options": vals}
 
 
 @app.get("/api/expand")

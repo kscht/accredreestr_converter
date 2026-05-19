@@ -77,6 +77,9 @@ def _surql_val(val: Any) -> str | None:
         return str(val)
     if isinstance(val, str):
         return '"' + val.replace("\\", "\\\\").replace('"', '\\"') + '"'
+    if isinstance(val, list):
+        parts = [_surql_val(i) for i in val]
+        return "[" + ", ".join(p for p in parts if p is not None) + "]"
     return None
 
 
@@ -133,6 +136,27 @@ def iter_surql_for_certificate(
     cert_props = _scalar_props(obj, cert_k.get("scalar_property_groups") or [])
     cert_props.pop("RegionName", None)
     cert_props["uri"] = f"urn:accred:v1:Certificate:{cid_s}"
+
+    # Проекция _graph → быстрые поля для фильтрации во вьювере
+    graph = obj.get("_graph") or {}
+    g_org = graph.get("org") or {}
+    if graph.get("region"):
+        cert_props["g_region"] = graph["region"]
+    if graph.get("region_short"):
+        cert_props["g_region_short"] = graph["region_short"]
+    if graph.get("control_organ"):
+        cert_props["g_control_organ"] = graph["control_organ"]
+    if graph.get("control_organ_short"):
+        cert_props["g_control_organ_short"] = graph["control_organ_short"]
+    if graph.get("edu_levels"):
+        cert_props["g_edu_levels"] = graph["edu_levels"]
+    if g_org.get("display_name"):
+        cert_props["g_display_name"] = g_org["display_name"]
+    if g_org.get("founder_key"):
+        cert_props["g_founder_key"] = g_org["founder_key"]
+    if g_org.get("founder_label"):
+        cert_props["g_founder_label"] = g_org["founder_label"]
+
     yield _upsert(cert_rid, cert_props)
 
     rn = str(obj.get("RegionName") or "").strip()
