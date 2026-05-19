@@ -827,8 +827,8 @@ def test_fill_aeo_coherent_inn_from_eduorg_chain_api(tmp_path: Path) -> None:
     row = _read_jsonl(out)[0]
     sup_aeo = row["Supplements"][0]["ActualEducationOrganization"]
     root_aeo = row["ActualEducationOrganization"]
-    assert sup_aeo["INN"] == "770000000055"
-    assert root_aeo["INN"] == "770000000055"
+    assert sup_aeo["_derived"]["INN"] == "770000000055"
+    assert root_aeo["_derived"]["INN"] == "770000000055"
     assert stats.aeo_coherent_fill_supplement_inn >= 1
     assert stats.aeo_coherent_fill_root_inn >= 1
 
@@ -846,7 +846,7 @@ def test_fill_aeo_coherent_root_inn_from_supplement_api(tmp_path: Path) -> None:
         schema_path=SCHEMA,
     )
     row = _read_jsonl(out)[0]
-    assert row["ActualEducationOrganization"]["INN"] == "770000000066"
+    assert row["ActualEducationOrganization"]["_derived"]["INN"] == "770000000066"
 
 
 def test_fill_aeo_branch_diff_uid_supplement_inn_ogrn_from_root(tmp_path: Path) -> None:
@@ -863,8 +863,8 @@ def test_fill_aeo_branch_diff_uid_supplement_inn_ogrn_from_root(tmp_path: Path) 
     )
     row = _read_jsonl(out)[0]
     sup_aeo = row["Supplements"][0]["ActualEducationOrganization"]
-    assert sup_aeo["INN"] == "770000000088"
-    assert sup_aeo["OGRN"] == "1027700880888"
+    assert sup_aeo["_derived"]["INN"] == "770000000088"
+    assert sup_aeo["_derived"]["OGRN"] == "1027700880888"
     assert stats.aeo_branch_id_mismatch_fill_supplement_inn == 1
     assert stats.aeo_branch_id_mismatch_fill_supplement_ogrn == 1
 
@@ -918,7 +918,7 @@ def test_cli_no_fill_aeo_coherent_flag(tmp_path: Path) -> None:
         ]
     )
     assert p1.returncode == 0
-    assert "INN" in _read_jsonl(out_on)[0]["Supplements"][0]["ActualEducationOrganization"]
+    assert "INN" in _read_jsonl(out_on)[0]["Supplements"][0]["ActualEducationOrganization"].get("_derived", {})
 
     out_off = tmp_path / "off.jsonl"
     p2 = _run_convert_cli(
@@ -951,8 +951,9 @@ def test_fill_edulevel_from_programm_name_fixture(tmp_path: Path) -> None:
     )
     row = _read_jsonl(out)[0]
     progs = row["Supplements"][0]["EducationalPrograms"]
-    assert progs[0]["EduLevelName"] == "Среднее общее образование"
+    assert progs[0]["_derived"]["EduLevelName"] == "Среднее общее образование"
     assert "EduLevelName" not in progs[1]
+    assert "EduLevelName" not in progs[1].get("_derived", {})
     assert stats.edulevel_from_programm_name_supplement_programs == 1
 
 
@@ -988,10 +989,10 @@ def test_edulevel_neighbor_backfill_global_fixture(tmp_path: Path) -> None:
     )
     rows = _read_jsonl(out)
     assert len(rows) == 2
-    assert rows[0]["Supplements"][0]["EducationalPrograms"][0]["EduLevelName"] == (
+    assert rows[0]["Supplements"][0]["EducationalPrograms"][0]["_derived"]["EduLevelName"] == (
         "Высшее образование - бакалавриат"
     )
-    assert rows[1]["Supplements"][0]["EducationalPrograms"][0]["EduLevelName"] == (
+    assert rows[1]["Supplements"][0]["EducationalPrograms"][0]["_derived"]["EduLevelName"] == (
         "Высшее образование - бакалавриат"
     )
     assert stats.edulevel_neighbor_backfill_global_pass_programs == 1
@@ -1050,7 +1051,7 @@ def test_backfill_neighbor_jsonl_standalone(tmp_path: Path) -> None:
     n = c.backfill_edulevel_name_from_programm_code_neighbors_jsonl(p)
     assert n == 1
     rows = _read_jsonl(p)
-    assert rows[1]["Supplements"][0]["EducationalPrograms"][0]["EduLevelName"] == (
+    assert rows[1]["Supplements"][0]["EducationalPrograms"][0]["_derived"]["EduLevelName"] == (
         "Высшее образование - бакалавриат"
     )
 
@@ -1069,10 +1070,16 @@ def test_normalize_edu_level_names_fz273_fixture(tmp_path: Path) -> None:
     )
     row = _read_jsonl(out)[0]
     progs = row["Supplements"][0]["EducationalPrograms"]
-    assert progs[0]["EduLevelName"] == "Основное общее образование"
-    assert progs[1]["EduLevelName"] == "Высшее образование - бакалавриат"
-    assert progs[2]["EduLevelName"] == "Среднее общее образование"
-    assert "EduLevelName" not in progs[3]
+    # Оригинальные значения из XML остаются нетронутыми
+    assert progs[0]["EduLevelName"] == "Общее образование"
+    assert progs[1]["EduLevelName"] == "ВО - бакалавриат"
+    assert progs[2]["EduLevelName"] == "Среднее общее образование"  # канонично, _derived не нужен
+    assert "EduLevelName" not in progs[3]  # target=null — удаляем из оригинала и _derived
+    # Нормализованные значения в _derived
+    assert progs[0]["_derived"]["EduLevelName"] == "Основное общее образование"
+    assert progs[1]["_derived"]["EduLevelName"] == "Высшее образование - бакалавриат"
+    assert "EduLevelName" not in progs[2].get("_derived", {})
+    assert "EduLevelName" not in progs[3].get("_derived", {})
     assert stats.edulevel_fz273_renamed_programs == 2
     assert stats.edulevel_fz273_cleared_programs == 1
     assert stats.edulevel_fz273_unknown_level_programs == 0
@@ -1210,8 +1217,8 @@ def test_cert_eduorg_inn_ogrn_backfill_from_root_aeo_when_no_supplements(tmp_pat
         schema_path=SCHEMA,
     )
     row = _read_jsonl(out)[0]
-    assert row["EduOrgINN"] == "770000000333"
-    assert row["EduOrgOGRN"] == "1027700333003"
+    assert row["_derived"]["EduOrgINN"] == "770000000333"
+    assert row["_derived"]["EduOrgOGRN"] == "1027700333003"
     assert stats.cert_eduorg_inn_backfill_from_root_aeo == 1
     assert stats.cert_eduorg_ogrn_backfill_from_root_aeo == 1
     assert stats.cert_eduorg_inn_backfill_from_supplement_same_uid_aeo == 0
@@ -1230,8 +1237,8 @@ def test_cert_eduorg_inn_ogrn_backfill_prefers_supplement_same_uid(tmp_path: Pat
         schema_path=SCHEMA,
     )
     row = _read_jsonl(out)[0]
-    assert row["EduOrgINN"] == "770000000055"
-    assert row["EduOrgOGRN"] == "1027700000999"
+    assert row["_derived"]["EduOrgINN"] == "770000000055"
+    assert row["_derived"]["EduOrgOGRN"] == "1027700000999"
     assert stats.cert_eduorg_inn_backfill_from_supplement_same_uid_aeo == 1
     assert stats.cert_eduorg_ogrn_backfill_from_supplement_same_uid_aeo == 1
 
@@ -1304,8 +1311,8 @@ def test_apply_certificate_inn_from_manual_ogrn_map_unit() -> None:
         "ActualEducationOrganization": {"Id": "x", "OGRN": "1026700630615"},
     }
     c.apply_certificate_inn_from_manual_ogrn_map(row, {"1026700630615": "6712005793"}, stats)
-    assert row["EduOrgINN"] == "6712005793"
-    assert row["ActualEducationOrganization"]["INN"] == "6712005793"
+    assert row["_derived"]["EduOrgINN"] == "6712005793"
+    assert row["ActualEducationOrganization"]["_derived"]["INN"] == "6712005793"
     assert stats.cert_inn_manual_override_by_ogrn_records == 1
     assert stats.cert_inn_manual_override_by_ogrn_eduorg_inn == 1
     assert stats.cert_inn_manual_override_by_ogrn_root_aeo_inn == 1
@@ -1322,8 +1329,9 @@ def test_apply_certificate_inn_from_manual_ogrn_map_partial_root_inn_present() -
         },
     }
     c.apply_certificate_inn_from_manual_ogrn_map(row, {"1026700630615": "6712005793"}, stats)
-    assert row["EduOrgINN"] == "6712005793"
-    assert row["ActualEducationOrganization"]["INN"] == "2222222222"
+    assert row["_derived"]["EduOrgINN"] == "6712005793"
+    assert row["ActualEducationOrganization"]["INN"] == "2222222222"  # оригинал не тронут
+    assert "INN" not in row["ActualEducationOrganization"].get("_derived", {})
     assert stats.cert_inn_manual_override_by_ogrn_records == 1
     assert stats.cert_inn_manual_override_by_ogrn_eduorg_inn == 1
     assert stats.cert_inn_manual_override_by_ogrn_root_aeo_inn == 0
@@ -1387,8 +1395,8 @@ def test_cert_manual_inn_by_ogrn_fixture_uses_specs_map(tmp_path: Path) -> None:
         schema_path=SCHEMA,
     )
     row = _read_jsonl(out)[0]
-    assert row["EduOrgINN"] == "6712005793"
-    assert row["ActualEducationOrganization"]["INN"] == "6712005793"
+    assert row["_derived"]["EduOrgINN"] == "6712005793"
+    assert row["ActualEducationOrganization"]["_derived"]["INN"] == "6712005793"
     assert stats.cert_inn_manual_override_by_ogrn_records == 1
 
 
@@ -1424,8 +1432,8 @@ def test_cert_manual_inn_by_ogrn_still_applies_when_aeo_fill_disabled(tmp_path: 
         fill_aeo_coherent_inn_ogrn=False,
     )
     row = _read_jsonl(out)[0]
-    assert row["EduOrgINN"] == "6712005793"
-    assert row["ActualEducationOrganization"]["INN"] == "6712005793"
+    assert row["_derived"]["EduOrgINN"] == "6712005793"
+    assert row["ActualEducationOrganization"]["_derived"]["INN"] == "6712005793"
     assert stats.cert_inn_manual_override_by_ogrn_records == 1
 
 
@@ -1499,9 +1507,9 @@ def test_fill_degenerate_supplement_aeo_identity_unit() -> None:
     }
     c.fill_degenerate_supplement_aeo_identity_from_certificate_donors(row, stats)
     saeo = row["Supplements"][0]["ActualEducationOrganization"]
-    assert saeo["INN"] == "770000000333"
-    assert saeo["OGRN"] == "1027700333003"
-    assert saeo["KPP"] == "770301001"
+    assert saeo["_derived"]["INN"] == "770000000333"
+    assert saeo["_derived"]["OGRN"] == "1027700333003"
+    assert saeo["_derived"]["KPP"] == "770301001"
     assert stats.supplement_aeo_degenerate_shell_records == 1
     assert stats.supplement_aeo_degenerate_shell_fill_inn == 1
     assert stats.supplement_aeo_degenerate_shell_fill_ogrn == 1
@@ -1535,9 +1543,9 @@ def test_supplement_aeo_degenerate_shell_fixture(tmp_path: Path) -> None:
     )
     row = _read_jsonl(out)[0]
     saeo = row["Supplements"][0]["ActualEducationOrganization"]
-    assert saeo["INN"] == "770000000333"
-    assert saeo["OGRN"] == "1027700333003"
-    assert saeo["KPP"] == "770301001"
+    assert saeo["_derived"]["INN"] == "770000000333"
+    assert saeo["_derived"]["OGRN"] == "1027700333003"
+    assert saeo["_derived"]["KPP"] == "770301001"
     assert stats.supplement_aeo_degenerate_shell_records == 1
 
 

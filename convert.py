@@ -507,6 +507,23 @@ def elem_to_dict(
 _ID_WS_HYPHEN = re.compile(r"[\s\-]")
 
 
+def _set_derived(obj: dict[str, Any], key: str, value: Any) -> None:
+    """Записывает вычисленное значение в obj["_derived"][key]."""
+    obj.setdefault("_derived", {})[key] = value
+
+
+def _get_effective(obj: dict[str, Any], key: str) -> Any:
+    """Возвращает значение из _derived[key] при наличии, иначе obj[key].
+
+    Позволяет fill-функциям корректно читать значения, заполненные предыдущими
+    шагами пайплайна, не смешивая их с оригинальными XML-полями.
+    """
+    d = obj.get("_derived")
+    if isinstance(d, dict) and key in d:
+        return d[key]
+    return obj.get(key)
+
+
 def _scalar_digits_only_string(v: Any) -> str | None:
     """Непустая строка только из цифр после удаления пробелов и дефисов (как после cast_id_number)."""
     if v is None:
@@ -551,9 +568,9 @@ def _aeo_supplement_uid_differs_from_root(root_aeo: Any, sup_aeo: Any) -> bool:
 
 
 def _aeo_field_missing_for_fill(aeo: Any, field_name: str) -> bool:
-    if not isinstance(aeo, dict) or field_name not in aeo:
+    if not isinstance(aeo, dict):
         return True
-    v = aeo.get(field_name)
+    v = _get_effective(aeo, field_name)
     if v is None:
         return True
     if isinstance(v, str) and not v.strip():
@@ -563,26 +580,26 @@ def _aeo_field_missing_for_fill(aeo: Any, field_name: str) -> bool:
 
 def _donor_inn_for_supplement(root_aeo: Any, row: dict[str, Any]) -> str | None:
     if isinstance(root_aeo, dict):
-        d = _scalar_digits_only_string(root_aeo.get("INN"))
+        d = _scalar_digits_only_string(_get_effective(root_aeo, "INN"))
         if d:
             return d
-    return _scalar_digits_only_string(row.get("EduOrgINN"))
+    return _scalar_digits_only_string(_get_effective(row, "EduOrgINN"))
 
 
 def _donor_ogrn_for_supplement(root_aeo: Any, row: dict[str, Any]) -> str | None:
     if isinstance(root_aeo, dict):
-        d = _scalar_digits_only_string(root_aeo.get("OGRN"))
+        d = _scalar_digits_only_string(_get_effective(root_aeo, "OGRN"))
         if d:
             return d
-    return _scalar_digits_only_string(row.get("EduOrgOGRN"))
+    return _scalar_digits_only_string(_get_effective(row, "EduOrgOGRN"))
 
 
 def _donor_kpp_for_supplement(root_aeo: Any, row: dict[str, Any]) -> str | None:
     if isinstance(root_aeo, dict):
-        d = _scalar_digits_only_string(root_aeo.get("KPP"))
+        d = _scalar_digits_only_string(_get_effective(root_aeo, "KPP"))
         if d:
             return d
-    return _scalar_digits_only_string(row.get("EduOrgKPP"))
+    return _scalar_digits_only_string(_get_effective(row, "EduOrgKPP"))
 
 
 def _first_supplement_digit_same_uid(
@@ -596,7 +613,7 @@ def _first_supplement_digit_same_uid(
             continue
         if not _aeo_supplement_uid_matches_root(root_aeo, saeo):
             continue
-        d = _scalar_digits_only_string(saeo.get(field))
+        d = _scalar_digits_only_string(_get_effective(saeo, field))
         if d:
             return d
     return None
@@ -623,12 +640,12 @@ def fill_aeo_inn_ogrn_from_coherent_certificate_sources(
         if _aeo_field_missing_for_fill(saeo, "INN"):
             d = _donor_inn_for_supplement(root_aeo, record)
             if d:
-                saeo["INN"] = d
+                _set_derived(saeo, "INN", d)
                 stats.aeo_coherent_fill_supplement_inn += 1
         if _aeo_field_missing_for_fill(saeo, "OGRN"):
             d = _donor_ogrn_for_supplement(root_aeo, record)
             if d:
-                saeo["OGRN"] = d
+                _set_derived(saeo, "OGRN", d)
                 stats.aeo_coherent_fill_supplement_ogrn += 1
 
     if isinstance(root_aeo, dict):
@@ -643,12 +660,12 @@ def fill_aeo_inn_ogrn_from_coherent_certificate_sources(
             if _aeo_field_missing_for_fill(saeo, "INN"):
                 d = _donor_inn_for_supplement(root_aeo, record)
                 if d:
-                    saeo["INN"] = d
+                    _set_derived(saeo, "INN", d)
                     stats.aeo_branch_id_mismatch_fill_supplement_inn += 1
             if _aeo_field_missing_for_fill(saeo, "OGRN"):
                 d = _donor_ogrn_for_supplement(root_aeo, record)
                 if d:
-                    saeo["OGRN"] = d
+                    _set_derived(saeo, "OGRN", d)
                     stats.aeo_branch_id_mismatch_fill_supplement_ogrn += 1
 
     if not isinstance(root_aeo, dict):
@@ -658,14 +675,14 @@ def fill_aeo_inn_ogrn_from_coherent_certificate_sources(
             record.get("EduOrgINN")
         )
         if d:
-            root_aeo["INN"] = d
+            _set_derived(root_aeo, "INN", d)
             stats.aeo_coherent_fill_root_inn += 1
     if _aeo_field_missing_for_fill(root_aeo, "OGRN"):
         d = _first_supplement_digit_same_uid(record, root_aeo, "OGRN") or _scalar_digits_only_string(
             record.get("EduOrgOGRN")
         )
         if d:
-            root_aeo["OGRN"] = d
+            _set_derived(root_aeo, "OGRN", d)
             stats.aeo_coherent_fill_root_ogrn += 1
 
 
@@ -682,26 +699,26 @@ def fill_certificate_eduorg_inn_ogrn_from_near_aeo(
     if not isinstance(root_aeo, dict):
         return
 
-    if _scalar_digits_only_string(record.get("EduOrgINN")) is None:
+    if _scalar_digits_only_string(_get_effective(record, "EduOrgINN")) is None:
         d = _first_supplement_digit_same_uid(record, root_aeo, "INN")
         if d:
-            record["EduOrgINN"] = d
+            _set_derived(record, "EduOrgINN", d)
             stats.cert_eduorg_inn_backfill_from_supplement_same_uid_aeo += 1
         else:
-            d2 = _scalar_digits_only_string(root_aeo.get("INN"))
+            d2 = _scalar_digits_only_string(_get_effective(root_aeo, "INN"))
             if d2:
-                record["EduOrgINN"] = d2
+                _set_derived(record, "EduOrgINN", d2)
                 stats.cert_eduorg_inn_backfill_from_root_aeo += 1
 
-    if _scalar_digits_only_string(record.get("EduOrgOGRN")) is None:
+    if _scalar_digits_only_string(_get_effective(record, "EduOrgOGRN")) is None:
         d = _first_supplement_digit_same_uid(record, root_aeo, "OGRN")
         if d:
-            record["EduOrgOGRN"] = d
+            _set_derived(record, "EduOrgOGRN", d)
             stats.cert_eduorg_ogrn_backfill_from_supplement_same_uid_aeo += 1
         else:
-            d2 = _scalar_digits_only_string(root_aeo.get("OGRN"))
+            d2 = _scalar_digits_only_string(_get_effective(root_aeo, "OGRN"))
             if d2:
-                record["EduOrgOGRN"] = d2
+                _set_derived(record, "EduOrgOGRN", d2)
                 stats.cert_eduorg_ogrn_backfill_from_root_aeo += 1
 
 
@@ -730,10 +747,10 @@ def _load_certificate_inn_overrides_by_ogrn(path: Path) -> dict[str, str]:
 
 
 def _ogrn_for_certificate_inn_override(record: dict[str, Any]) -> str | None:
-    cert_o = _scalar_digits_only_string(record.get("EduOrgOGRN"))
+    cert_o = _scalar_digits_only_string(_get_effective(record, "EduOrgOGRN"))
     root_aeo = record.get("ActualEducationOrganization")
     root_o = (
-        _scalar_digits_only_string(root_aeo.get("OGRN"))
+        _scalar_digits_only_string(_get_effective(root_aeo, "OGRN"))
         if isinstance(root_aeo, dict)
         else None
     )
@@ -767,12 +784,12 @@ def apply_certificate_inn_from_manual_ogrn_map(
     root_aeo = record.get("ActualEducationOrganization")
 
     wrote_any = False
-    if _scalar_digits_only_string(record.get("EduOrgINN")) is None:
-        record["EduOrgINN"] = inn
+    if _scalar_digits_only_string(_get_effective(record, "EduOrgINN")) is None:
+        _set_derived(record, "EduOrgINN", inn)
         stats.cert_inn_manual_override_by_ogrn_eduorg_inn += 1
         wrote_any = True
-    if isinstance(root_aeo, dict) and _scalar_digits_only_string(root_aeo.get("INN")) is None:
-        root_aeo["INN"] = inn
+    if isinstance(root_aeo, dict) and _scalar_digits_only_string(_get_effective(root_aeo, "INN")) is None:
+        _set_derived(root_aeo, "INN", inn)
         stats.cert_inn_manual_override_by_ogrn_root_aeo_inn += 1
         wrote_any = True
     if wrote_any:
@@ -797,9 +814,9 @@ def fill_degenerate_supplement_aeo_identity_from_certificate_donors(
         saeo = sup.get("ActualEducationOrganization")
         if not isinstance(saeo, dict):
             continue
-        if _scalar_digits_only_string(saeo.get("INN")) is not None:
+        if _scalar_digits_only_string(_get_effective(saeo, "INN")) is not None:
             continue
-        if _scalar_digits_only_string(saeo.get("OGRN")) is not None:
+        if _scalar_digits_only_string(_get_effective(saeo, "OGRN")) is not None:
             continue
         inn_d = _donor_inn_for_supplement(root_aeo, record)
         ogrn_d = _donor_ogrn_for_supplement(root_aeo, record)
@@ -808,15 +825,15 @@ def fill_degenerate_supplement_aeo_identity_from_certificate_donors(
             continue
         touched = False
         if inn_d:
-            saeo["INN"] = inn_d
+            _set_derived(saeo, "INN", inn_d)
             stats.supplement_aeo_degenerate_shell_fill_inn += 1
             touched = True
         if ogrn_d:
-            saeo["OGRN"] = ogrn_d
+            _set_derived(saeo, "OGRN", ogrn_d)
             stats.supplement_aeo_degenerate_shell_fill_ogrn += 1
             touched = True
         if kpp_d and _aeo_field_missing_for_fill(saeo, "KPP"):
-            saeo["KPP"] = kpp_d
+            _set_derived(saeo, "KPP", kpp_d)
             stats.supplement_aeo_degenerate_shell_fill_kpp += 1
             touched = True
         if touched:
@@ -824,10 +841,8 @@ def fill_degenerate_supplement_aeo_identity_from_certificate_donors(
 
 
 def _educational_program_edulevel_missing(pr: dict[str, Any]) -> bool:
-    """True, если у программы нет непустого EduLevelName (после нормализации парсера)."""
-    if "EduLevelName" not in pr:
-        return True
-    v = pr["EduLevelName"]
+    """True, если у программы нет непустого EduLevelName (проверяет _derived и оригинал)."""
+    v = _get_effective(pr, "EduLevelName")
     if v is None:
         return True
     if isinstance(v, str):
@@ -918,7 +933,7 @@ def fill_edulevel_name_from_programm_name_when_implied(
                 continue
             t = pn.strip()
             if t in PROGRAMM_NAMES_THAT_IMPLY_EQUAL_EDU_LEVEL_NAME:
-                pr["EduLevelName"] = t
+                _set_derived(pr, "EduLevelName", t)
                 stats.edulevel_from_programm_name_supplement_programs += 1
 
 
@@ -970,7 +985,7 @@ def _collect_edulevel_histogram_by_programm_code_pass1(path: Path) -> dict[str, 
                 code = programm_code_lookup_key(pr.get("ProgrammCode"))
                 if code is None or _educational_program_edulevel_missing(pr):
                     continue
-                v = pr.get("EduLevelName")
+                v = _get_effective(pr, "EduLevelName")
                 if isinstance(v, str) and v.strip():
                     tall[code][v.strip()] += 1
                 elif v is not None and not isinstance(v, str):
@@ -1037,7 +1052,7 @@ def backfill_edulevel_name_from_programm_code_neighbors_jsonl(
                     code = programm_code_lookup_key(pr.get("ProgrammCode"))
                     if code is None or code not in code_to_level:
                         continue
-                    pr["EduLevelName"] = code_to_level[code]
+                    _set_derived(pr, "EduLevelName", code_to_level[code])
                     filled += 1
                 safe = ensure_json_safe(row)
                 if omit_null_keys:
@@ -1127,23 +1142,23 @@ def normalize_edu_level_names_via_fz273_map(
         for pr in sup.get("EducationalPrograms") or []:
             if not isinstance(pr, dict):
                 continue
-            if "EduLevelName" not in pr:
-                continue
-            v = pr.get("EduLevelName")
+            v = _get_effective(pr, "EduLevelName")
             if v is None:
-                pr.pop("EduLevelName", None)
                 continue
             raw = v.strip() if isinstance(v, str) else str(v).strip()
             if not raw:
-                pr.pop("EduLevelName", None)
                 continue
             if raw in res.explicit_target_by_source:
                 tgt = res.explicit_target_by_source[raw]
                 if tgt is None:
+                    # FZ-273 говорит убрать — очищаем и оригинал, и _derived
                     pr.pop("EduLevelName", None)
+                    derived = pr.get("_derived")
+                    if isinstance(derived, dict):
+                        derived.pop("EduLevelName", None)
                     stats.edulevel_fz273_cleared_programs += 1
                 elif tgt != raw:
-                    pr["EduLevelName"] = tgt
+                    _set_derived(pr, "EduLevelName", tgt)
                     stats.edulevel_fz273_renamed_programs += 1
                 continue
             if raw in res.canonical_names:
@@ -1177,9 +1192,9 @@ def has_valid_eduorg_ogrn(record: dict[str, Any]) -> bool:
     """True, если на корне Certificate есть непустой EduOrgOGRN из цифр после очистки.
 
     Согласовано с ``tools/audit_dataset_identity_fields.py`` (блок ``per_certificate.EduOrgOGRN``): пробелы и дефисы убираются,
-    остаток непустой и состоит только из цифр.
+    остаток непустой и состоит только из цифр. Проверяет _derived и оригинал.
     """
-    v = record.get("EduOrgOGRN")
+    v = _get_effective(record, "EduOrgOGRN")
     if v is None:
         return False
     s = str(v).strip()
@@ -1332,6 +1347,47 @@ def _init_file_stats(stats: ConversionStats, basename: str) -> None:
         }
 
 
+def annotate_derived_fields(record: dict[str, Any]) -> None:
+    """Добавляет ключ ``_derived`` на корень сертификата и каждый Supplement.
+
+    Вычисленные поля хранятся отдельно от оригинальных данных XML,
+    чтобы потребитель всегда мог отличить исходное значение от вывода.
+
+    Текущие поля:
+
+    Supplement._derived.IsBranchSupplement : bool
+        True, если приложение относится к филиалу или иному структурному
+        подразделению, отличному от головной организации на сертификате.
+        Сигналы (хватает любого одного):
+        - ``Supplement.IsForBranch == True`` — явный флаг из XML;
+        - ``Supplement.ActualEducationOrganization.Id`` не совпадает с
+          ``Certificate.ActualEducationOrganization.Id`` — карточка ОО
+          в приложении отличается от карточки ОО сертификата.
+
+    Certificate._derived.HasBranchSupplements : bool
+        True, если хотя бы одно приложение имеет IsBranchSupplement == True.
+    """
+    root_aeo_id: str | None = None
+    root_aeo = record.get("ActualEducationOrganization")
+    if isinstance(root_aeo, dict):
+        root_aeo_id = root_aeo.get("Id")
+
+    has_branch = False
+    for sup in record.get("Supplements") or []:
+        if not isinstance(sup, dict):
+            continue
+        is_branch = bool(sup.get("IsForBranch"))
+        if not is_branch and root_aeo_id is not None:
+            sup_aeo = sup.get("ActualEducationOrganization")
+            if isinstance(sup_aeo, dict):
+                is_branch = sup_aeo.get("Id") != root_aeo_id
+        sup.setdefault("_derived", {})["IsBranchSupplement"] = is_branch
+        if is_branch:
+            has_branch = True
+
+    record.setdefault("_derived", {})["HasBranchSupplements"] = has_branch
+
+
 def convert_one(
     input_path: Path,
     out_fh,
@@ -1403,6 +1459,7 @@ def convert_one(
                 strip_degenerate_educational_program_stubs(record, stats)
                 if edu_level_fz273 is not None:
                     normalize_edu_level_names_via_fz273_map(record, edu_level_fz273, stats)
+                annotate_derived_fields(record)
                 if omit_inactive and (
                     record.get("StatusName") in CERTIFICATE_ROOT_STATUSES_OMITTED_FROM_JSONL
                 ):
